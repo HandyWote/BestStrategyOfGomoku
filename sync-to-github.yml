@@ -1,30 +1,27 @@
-name: Sync from Gitea to GitHub
+name: Sync to GitHub on Push
 
-on:
-  push:
-    branches: [ "**" ]  # 同步所有分支
+on: [push]  # 监听所有 push 事件
 
 jobs:
   sync-to-github:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Gitea code
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4  # Gitea 也支持标准的 actions/checkout
         with:
-          fetch-depth: 0  # 获取完整历史
+          fetch-depth: 0
 
-      - name: Configure Git identity
+      - name: Configure Git
         run: |
-          git config --global user.name "GitHub Actions Sync Bot"
-          git config --global user.email "actions@users.noreply.github.com"
+          git config --global user.name "Gitea Sync Bot"
+          git config --global user.email "gitea@example.com"
 
       - name: Add GitHub remote
         run: |
           git remote remove github || true
-          # 使用你的 PAT 认证
           git remote add github "https://${{ secrets.GH_PAT }}@github.com/HandyWote/BestStrategyOfGomoku.git"
 
       - name: Push to GitHub
         run: |
-          CURRENT_BRANCH=${GITHUB_REF#refs/heads/}
+          CURRENT_BRANCH=${GITEA_REF#refs/heads/}
           git push github "$CURRENT_BRANCH" --force
