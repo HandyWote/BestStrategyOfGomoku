@@ -1,13 +1,13 @@
 name: Sync to GitHub on Push
 
-on: [push]  # 监听所有 push 事件
+on: [push]
 
 jobs:
   sync-to-github:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4  # Gitea 也支持标准的 actions/checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -15,13 +15,22 @@ jobs:
         run: |
           git config --global user.name "Gitea Sync Bot"
           git config --global user.email "gitea@example.com"
+          git config --global push.default current
+
+      - name: Verify Branch
+        id: branch
+        run: |
+          CURRENT_BRANCH=$(git symbolic-ref --short HEAD)
+          echo "branch=${CURRENT_BRANCH}" >> $GITHUB_OUTPUT
+          echo "Current branch: ${CURRENT_BRANCH}"
 
       - name: Add GitHub remote
         run: |
           git remote remove github || true
           git remote add github "https://${{ secrets.GH_PAT }}@github.com/HandyWote/BestStrategyOfGomoku.git"
+          git fetch github
 
       - name: Push to GitHub
         run: |
-          CURRENT_BRANCH=${GITEA_REF#refs/heads/}
-          git push github "$CURRENT_BRANCH" --force
+          git push github HEAD:${{ steps.branch.outputs.branch }} --force
+          echo "Successfully pushed to GitHub"
