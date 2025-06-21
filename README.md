@@ -57,7 +57,7 @@ graph TD
 ## 环境配置
 1. 克隆仓库：
 ```bash
-git clone ssh://git@git.handywote.site:2222/BestGameStrategyGroup/BestStrategyOfGomoku.git
+git clone https://git.handywote.site/BestGameStrategyGroup/BestStrategyOfGomoku.git
 ```
 
 
