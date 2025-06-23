@@ -1,25 +1,23 @@
 name: Sync to GitHub on Push
-
 on: [push]
-
 jobs:
   sync-to-github:
     runs-on: ubuntu-latest
     steps:
-      # 1. 使用镜像站加速 checkout
+      # 1. 使用 ghproxy 镜像站（最稳定）
       - name: Checkout code
-        uses: https://hub.fastgit.xyz/actions/checkout@v4
+        uses: https://ghproxy.com/https://github.com/actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2. 配置 Git（增加镜像源设置）
+      # 2. 配置 Git（取消全局镜像，改用代理）
       - name: Configure Git
         run: |
           git config --global user.name "Gitea Sync Bot"
           git config --global user.email "gitea@example.com"
           git config --global push.default current
-          # 添加 GitHub 镜像源全局配置
-          git config --global url."https://hub.fastgit.xyz".insteadOf "https://github.com"
+          # 删除之前的镜像配置（避免冲突）
+          git config --global --unset url.https://hub.fastgit.xyz.insteadOf
 
       # 3. 验证分支（保持不变）
       - name: Verify Branch
@@ -29,16 +27,21 @@ jobs:
           echo "branch=${CURRENT_BRANCH}" >> $GITHUB_OUTPUT
           echo "Current branch: ${CURRENT_BRANCH}"
 
-      # 4. 添加 GitHub remote（使用镜像源域名）
+      # 4. 添加 GitHub remote（原始地址+代理）
       - name: Add GitHub remote
         run: |
           git remote remove github || true
-          # 使用镜像站域名替换 github.com
-          git remote add github "https://${{ secrets.GH_PAT }}@hub.fastgit.xyz/HandyWote/BestStrategyOfGomoku.git"
+          git remote add github "https://${{ secrets.GH_PAT }}@github.com/HandyWote/BestStrategyOfGomoku.git"
+          # 使用代理环境变量
+          export http_proxy=http://your-proxy-ip:port
+          export https_proxy=http://your-proxy-ip:port
           git fetch github
 
-      # 5. 推送（保持不变）
+      # 5. 推送（带重试）
       - name: Push to GitHub
         run: |
-          git push github HEAD:${{ steps.branch.outputs.branch }} --force
+          for i in {1..3}; do
+            git push github HEAD:${{ steps.branch.outputs.branch }} --force && break
+            sleep 5
+          done
           echo "Successfully pushed to GitHub"
