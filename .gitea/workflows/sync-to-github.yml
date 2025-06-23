@@ -1,27 +1,22 @@
 name: Sync to GitHub on Push
+
 on: [push]
+
 jobs:
   sync-to-github:
     runs-on: ubuntu-latest
     steps:
-      # 1. 标准 checkout（Gitea 会自动处理）
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2. 配置 Git 和代理
       - name: Configure Git
         run: |
           git config --global user.name "Gitea Sync Bot"
           git config --global user.email "gitea@example.com"
           git config --global push.default current
-          # 方案1：使用镜像站（推荐）
-          git config --global url."https://ghproxy.com/https://github.com".insteadOf "https://github.com"
-          # 方案2：或者设置HTTP代理（如果有）
-          # git config --global http.proxy http://your-proxy-ip:port
 
-      # 3. 验证分支
       - name: Verify Branch
         id: branch
         run: |
@@ -29,18 +24,13 @@ jobs:
           echo "branch=${CURRENT_BRANCH}" >> $GITHUB_OUTPUT
           echo "Current branch: ${CURRENT_BRANCH}"
 
-      # 4. 添加 GitHub remote（自动应用代理配置）
       - name: Add GitHub remote
         run: |
           git remote remove github || true
           git remote add github "https://${{ secrets.GH_PAT }}@github.com/HandyWote/BestStrategyOfGomoku.git"
-          git fetch --retry 3 github  # 自动重试
+          git fetch github
 
-      # 5. 推送（带重试机制）
       - name: Push to GitHub
         run: |
-          for i in {1..3}; do
-            git push github HEAD:${{ steps.branch.outputs.branch }} --force && exit 0
-            sleep 5
-          done
-          exit 1
+          git push github HEAD:${{ steps.branch.outputs.branch }} --force
+          echo "Successfully pushed to GitHub"
