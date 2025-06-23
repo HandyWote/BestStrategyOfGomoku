@@ -59,6 +59,10 @@ graph TD
 ```bash
 git clone https://git.handywote.site/BestGameStrategyGroup/BestStrategyOfGomoku.git
 ```
+2. ssh连接：
+```bash
+git remote add main git@117.72.109.148:2222/BestGameStrategyGroup/BestStrategyOfGomoku.git
+```
 
 
 > **重要提示**：请确保小组成员掌握Git基础操作和Markdown语法
