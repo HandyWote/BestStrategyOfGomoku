@@ -15,6 +15,7 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+.promptx
 
 # 日志文件
 *.log
@@ -43,6 +44,7 @@ out/
 .env.development
 .env.test
 .env.production
+config.json
 
 # 测试覆盖率
 coverage/
