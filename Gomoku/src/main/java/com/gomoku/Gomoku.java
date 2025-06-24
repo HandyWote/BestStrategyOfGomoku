@@ -1,4 +1,4 @@
-package Gomoku;
+package com.gomoku;
 
 public class Gomoku {
 }
