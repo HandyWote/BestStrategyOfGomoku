@@ -2,7 +2,7 @@
 .DS_Store
 .DS_Store?
 ._*
-.Spotlight-V100
+.Spotlight-V100promptx
 .Trashes
 ehthumbs.db
 Thumbs.db
@@ -16,6 +16,7 @@ Thumbs.db
 *.sln
 *.sw?
 .promptx
+myenv
 
 # 日志文件
 *.log
