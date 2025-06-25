@@ -17,6 +17,7 @@ Thumbs.db
 *.sw?
 .promptx
 myenv
+__pycache__
 
 # 日志文件
 *.log
