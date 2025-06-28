@@ -1,117 +1,167 @@
 package com.gomoku;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/gomoku")
 public class GameController {
-    private final Map<Integer, Gomoku> gomokus = new HashMap<>();
 
+    private final GameService gameService;
+
+    public GameController(GameService gameService) {
+        this.gameService = gameService;
+    }
+
+    /**
+     * 获取棋盘信息
+     * @param id 棋盘ID
+     * @param showStatus 是否显示游戏状态，默认为false
+     * @return 棋盘信息或错误信息
+     */
     @GetMapping("/{id}")
-    public Object getChessboard(@PathVariable int id, @RequestParam(required = false) boolean showStatus) { //showStatus参数用于控制棋盘获取成功时是否显示游戏状态，默认为false
-        if(gomokus.containsKey(id)) {
-            Gomoku gomoku = gomokus.get(id);
-            LinkedHashMap<String, Object> response = new LinkedHashMap<>();
-            if(showStatus){
-                response.put("code", 0);
+    public ResponseEntity<Map<String, Object>> getChessboard(
+            @PathVariable int id,
+            @RequestParam(required = false, defaultValue = "false") boolean showStatus) {
+        try {
+            Gomoku gomoku = gameService.getGomoku(id);
+            if (gomoku == null) {
+                return ResponseEntity.ok(createErrorResponse("棋盘不存在"));
+            }
+            Map<String, Object> response = createSuccessResponse();
+            if (showStatus) {
                 response.put("nextPlayer", gomoku.checkPlayerNow());
                 response.put("isGameOver", gomoku.isGameOver());
-                if(gomoku.isGameOver()) response.put("winner", gomoku.getWinner());
+                if (gomoku.isGameOver()) {
+                    response.put("winner", gomoku.getWinner());
+                }
             }
             response.put("board", gomoku.getChessboard());
-            return response;
-        }else {
-            return createResponse(-1, "棋盘不存在");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.ok(createErrorResponse("获取棋盘失败: " + e.getMessage()));
         }
     }
 
+    /**
+     * 创建新棋盘
+     * @param body 请求体
+     * @return 创建结果
+     */
     @PostMapping
-    public Object createChessboard(@RequestBody GomokuRequest body) {
-        if(body.containId()) {
-            int id =  body.getId();
-            if (gomokus.containsKey(id)) {
-                return createResponse(-1, "棋盘已存在");
+    public ResponseEntity<Map<String, Object>> createChessboard(@RequestBody GomokuRequest body) {
+        try {
+            if (!body.containId()) {
+                return ResponseEntity.ok(createErrorResponse("请求体中缺少棋盘ID"));
             }
-            if(body.containBoard()){
-                int[][] board =  body.getBoard();
-                Gomoku gomoku = new Gomoku(board);
-                gomokus.put(id, gomoku);
-                return createResponse(0, "棋盘创建成功");
-            }else if(body.containX() && body.containY()) {
-                int x = body.getX();
-                int y = body.getX();
-                Gomoku gomoku = new Gomoku(x, y);
-                gomokus.put(id, gomoku);
-                return createResponse(0, "棋盘创建成功");
-            }else{
-                Gomoku gomoku = new Gomoku();
-                gomokus.put(id, gomoku);
-                return createResponse(0, "棋盘创建成功");
+            int id = body.getId();
+            if (gameService.exists(id)) {
+                return ResponseEntity.ok(createErrorResponse("棋盘已存在"));
             }
-        }else{
-            return createResponse(-1, "请求体中缺少棋盘ID");
+            Gomoku gomoku = createGomokuFromRequest(body);
+            gameService.saveGomoku(id, gomoku);
+
+            return ResponseEntity.ok(createSuccessResponse("棋盘创建成功"));
+        } catch (Exception e) {
+            return ResponseEntity.ok(createErrorResponse("创建棋盘失败: " + e.getMessage()));
         }
     }
 
+    /**
+     * 更新棋盘
+     * @param id 棋盘ID
+     * @param body 更新内容
+     * @return 更新结果
+     */
     @PutMapping("/{id}")
-    public Object updateChessboard(@PathVariable int id, @RequestBody GomokuRequest body) {
-        Gomoku gomoku = gomokus.get(id);
-        if (!gomokus.containsKey(id)) {
-            return createResponse(-1, "棋盘不存在，无法更新");
-        }else if(body.containBoard()) {
-            int[][] newBoard = body.getBoard();
-            int[][] board = gomoku.getChessboard();
-            int x=-1,y=-1,count=0; // 记录修改的坐标和修改次数
-            for (int i = 0; i < board.length; i++) {
-                for (int j = 0; j < board[i].length; j++) {
-                    if(board[i][j] != newBoard[i][j]) {
-                        x = i;
-                        y = j;
-                        count++;
-                    }
-                }
+    public ResponseEntity<Map<String, Object>> updateChessboard(
+            @PathVariable int id,
+            @RequestBody GomokuRequest body) {
+        try {
+            Gomoku gomoku = gameService.getGomoku(id);
+            if (gomoku == null) {
+                return ResponseEntity.ok(createErrorResponse("棋盘不存在，无法更新"));
             }
-            if (count != 1) {
-                return createResponse(-1,"更新失败，棋盘修改超过2处或少于1处");
-            }else{
-                if (!gomoku.updateChess(x, y, newBoard[x][y])){
-                    return createResponse(-1,"更新失败，可能是因为位置已被占用或坐标不合法");
-                }else {
-                    gomokus.put(id, gomoku);
-                    return createResponse(0, "棋盘更新成功");
-                }
+            boolean updateResult;
+            if (body.containBoard()) { // 如果请求体中包含棋盘数组
+                updateResult = gomoku.updateChess(body.getBoard());
+            } else {
+                int x = body.getX();
+                int y = body.getY();
+                int player = body.getPlayer();
+                updateResult = gomoku.updateChess(x, y, player);
             }
-        }else{
-            int x = body.getX();
-            int y = body.getY();
-            int player = body.getPlayer(); // 默认玩家为1,即黑子
-            if (!gomoku.updateChess(x, y, player)) {
-                return createResponse(-1,"更新失败，可能是因为位置已被占用或坐标不合法");
-            }else{
-                gomokus.put(id, gomoku);
-                return createResponse(0, "棋盘更新成功");
+            if (!updateResult) {
+                return ResponseEntity.ok(createErrorResponse("更新棋盘失败:" + gomoku.getWrongMessage()));
             }
+            gameService.saveGomoku(id, gomoku);
+            return ResponseEntity.ok(createSuccessResponse("棋盘更新成功"));
+
+        } catch (Exception e) {
+            return ResponseEntity.ok(createErrorResponse("更新棋盘失败: " + e.getMessage()));
         }
     }
 
+    /**
+     * 删除棋盘
+     * @param id 棋盘ID
+     * @return 删除结果
+     */
     @DeleteMapping("/{id}")
-    public Object deleteChessboard(@PathVariable int id) {
-        if (gomokus.containsKey(id)) {
-            gomokus.remove(id);
-            return createResponse(0, "棋盘删除成功");
-        }else{
-            return createResponse(-1, "棋盘不存在");
+    public ResponseEntity<Map<String, Object>> deleteChessboard(@PathVariable int id) {
+        try {
+            if (!gameService.exists(id)) {
+                return ResponseEntity.ok(createErrorResponse("棋盘不存在"));
+            }
+            gameService.removeGomoku(id);
+            return ResponseEntity.ok(createSuccessResponse("棋盘删除成功"));
+        } catch (Exception e) {
+            return ResponseEntity.ok(createErrorResponse("删除棋盘失败: " + e.getMessage()));
         }
     }
 
-    private Object createResponse(int code, String msg) {
-        LinkedHashMap<String, Object> response = new LinkedHashMap<>();
-        response.put("code", code);
-        response.put("msg", msg);
+    /**
+     * 根据请求体创建五子棋实例
+     */
+    private Gomoku createGomokuFromRequest(GomokuRequest body) {
+        if (body.containBoard()) { // 如果请求体中包含棋盘数组
+            return new Gomoku(body.getBoard());
+        } else if (body.containX() && body.containY()) { // 如果请求体中包含坐标x,y
+            return new Gomoku(body.getX(), body.getY());
+        } else { // 创建一个默认9x9的棋盘
+            return new Gomoku();
+        }
+    }
+
+    /**
+     * 创建成功响应
+     */
+    private Map<String, Object> createSuccessResponse() {
+        return createSuccessResponse(null);
+    }
+
+    /**
+     * 创建成功响应
+     */
+    private Map<String, Object> createSuccessResponse(String message) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("code", 0);
+        if (message != null) {
+            response.put("msg", message);
+        }
+        return response;
+    }
+
+    /**
+     * 创建错误响应
+     */
+    private Map<String, Object> createErrorResponse(String message) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("code", -1);
+        response.put("msg", message);
         return response;
     }
 
