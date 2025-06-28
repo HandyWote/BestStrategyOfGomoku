@@ -17,7 +17,7 @@ public class GameController {
             Gomoku gomoku = gomokus.get(id);
             LinkedHashMap<String, Object> response = new LinkedHashMap<>();
             if(showCode) response.put("code", 0);
-            response.put("board", gomoku.getBoard());
+            response.put("board", gomoku.getChessboard());
             return response;
         }else {
             return createResponse(-1, "棋盘不存在");
@@ -34,7 +34,6 @@ public class GameController {
             if(body.containBoard()){
                 int[][] board =  body.getBoard();
                 Gomoku gomoku = new Gomoku(board);
-                gomoku.setBoard(board);
                 gomokus.put(id, gomoku);
                 return createResponse(0, "棋盘创建成功");
             }else if(body.containX() && body.containY()) {
@@ -60,7 +59,7 @@ public class GameController {
             return createResponse(-1, "棋盘不存在，无法更新");
         }else if(body.containBoard()) {
             int[][] newBoard = body.getBoard();
-            int[][] board = gomoku.getBoard();
+            int[][] board = gomoku.getChessboard();
             int x=-1,y=-1,count=0; // 记录修改的坐标和修改次数
             for (int i = 0; i < board.length; i++) {
                 for (int j = 0; j < board[i].length; j++) {
