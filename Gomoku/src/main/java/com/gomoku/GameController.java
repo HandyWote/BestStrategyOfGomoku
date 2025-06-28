@@ -12,11 +12,16 @@ public class GameController {
     private final Map<Integer, Gomoku> gomokus = new HashMap<>();
 
     @GetMapping("/{id}")
-    public Object getChessboard(@PathVariable int id, @RequestParam(required = false) boolean showCode) { //showCode参数用于控制棋盘获取成功时是否显示状态code，默认为false
+    public Object getChessboard(@PathVariable int id, @RequestParam(required = false) boolean showStatus) { //showStatus参数用于控制棋盘获取成功时是否显示游戏状态，默认为false
         if(gomokus.containsKey(id)) {
             Gomoku gomoku = gomokus.get(id);
             LinkedHashMap<String, Object> response = new LinkedHashMap<>();
-            if(showCode) response.put("code", 0);
+            if(showStatus){
+                response.put("code", 0);
+                response.put("nextPlayer", gomoku.checkPlayerNow());
+                response.put("isGameOver", gomoku.isGameOver());
+                if(gomoku.isGameOver()) response.put("winner", gomoku.getWinner());
+            }
             response.put("board", gomoku.getChessboard());
             return response;
         }else {
