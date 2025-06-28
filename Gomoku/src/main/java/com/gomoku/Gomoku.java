@@ -5,6 +5,7 @@ public class Gomoku {
     private int currentPlayer;      // 当前玩家，1表示黑子，-1表示白子
     private boolean gameOver;       // 游戏是否结束
     private int winner;             // 胜利者，1表示黑子赢，-1表示白子赢，2表示平局
+    private String wrongMessage; // 错误信息
 
     // 创建9x9的默认棋盘
     public Gomoku() {
@@ -49,41 +50,6 @@ public class Gomoku {
         // 检查已有棋盘是否已经有胜者
         this.winner = checkWinner();
         this.gameOver = this.winner != 0;
-    }
-
-    // 检查更新是否符合规则
-    public boolean checkUpdate(int[][] newBoard, int x, int y, int player) {
-        // 检查坐标是否在棋盘范围内
-        if (x < 0 || x >= chessboard.length || y < 0 || y >= chessboard[0].length) {
-            return false;
-        }
-
-        // 检查是否是当前玩家的回合
-        if (player != currentPlayer) {
-            return false;
-        }
-
-        // 检查该位置是否为空
-        if (chessboard[x][y] != 0) {
-            return false;
-        }
-
-        // 检查新棋盘是否只在指定位置有变化
-        int diffCount = 0;
-        for (int i = 0; i < chessboard.length; i++) {
-            for (int j = 0; j < chessboard[0].length; j++) {
-                if (newBoard[i][j] != chessboard[i][j]) {
-                    diffCount++;
-                    // 检查变化是否是正确的落子
-                    if (i != x || j != y || newBoard[i][j] != player) {
-                        return false;
-                    }
-                }
-            }
-        }
-
-        // 应该只有一处变化
-        return diffCount == 1;
     }
 
     // 检查胜利者
@@ -196,21 +162,25 @@ public class Gomoku {
     public boolean updateChess(int x, int y, int player) {
         // 检查游戏是否已结束
         if (gameOver) {
+            wrongMessage = "游戏已结束";
             return false;
         }
 
         // 检查是否是当前玩家的回合
         if (player != currentPlayer) {
+            wrongMessage = "不是当前玩家的回合";
             return false;
         }
 
         // 检查坐标是否在棋盘范围内
         if (x < 0 || x >= chessboard.length || y < 0 || y >= chessboard[0].length) {
+            wrongMessage = "坐标超出棋盘范围";
             return false;
         }
 
         // 检查该位置是否为空
         if (chessboard[x][y] != 0) {
+            wrongMessage = "该位置已有棋子";
             return false;
         }
 
@@ -228,6 +198,40 @@ public class Gomoku {
         return true;
     }
 
+    // 通过数组落子
+    public boolean updateChess(int[][] newBoard) {
+        int[][] currentBoard = this.chessboard;
+        int x = -1, y = -1, diffCount = 0;
+        // 检查新棋盘是否与当前棋盘大小一致
+        if (newBoard.length != chessboard.length || newBoard[0].length != chessboard[0].length) {
+            wrongMessage = "新棋盘大小与当前棋盘不一致";
+            return false;
+        }
+
+        // 找出修改的位置
+        for (int i = 0; i < chessboard.length; i++) {
+            for (int j = 0; j < chessboard[0].length; j++) {
+                if(newBoard[i] == null || newBoard[i].length != chessboard[0].length) {
+                    wrongMessage = "新棋盘必须是矩形";
+                    return false;
+                }
+                if(newBoard[i][j] != currentBoard[i][j]) {
+                    x = i;
+                    y = j;
+                    diffCount++;
+                }
+            }
+        }
+
+        // 只允许修改一个位置
+        if (diffCount != 1) {
+            wrongMessage = "更新的棋盘必须只在一个位置有变化";
+            return false;
+        }
+
+        return updateChess(x, y, newBoard[x][y]);
+    }
+
     // 判断游戏是否结束
     public boolean isGameOver() {
         return gameOver;
@@ -236,5 +240,9 @@ public class Gomoku {
     // 获取胜利者
     public int getWinner() {
         return winner;
+    }
+
+    public String getWrongMessage() {
+        return wrongMessage;
     }
 }
