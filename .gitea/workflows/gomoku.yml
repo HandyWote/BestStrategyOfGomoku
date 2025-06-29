@@ -22,7 +22,7 @@ jobs:
           cd Gomoku
           ./gradlew build --info
       - name: 安装 zip 工具
-        run: sudo apt-get update && sudo apt-get install -y zip
+        run: apt-get update && apt-get install -y zip
       - name: 打包构建产物为 zip
         run: |
           cd Gomoku/build/libs
