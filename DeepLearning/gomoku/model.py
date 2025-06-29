@@ -59,7 +59,7 @@ class GomokuNet(nn.Module):
             policy_logits, value = self.forward(board)
             
         # Convert policy logits to probabilities
-        policy = F.softmax(policy_logits, dim=1).squeeze(0).numpy()
+        policy = F.softmax(policy_logits, dim=1).squeeze(0).cpu().numpy()
         value = value.item()
         
         return policy, value

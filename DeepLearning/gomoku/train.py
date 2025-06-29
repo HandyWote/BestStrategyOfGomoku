@@ -13,7 +13,7 @@ import time
 class Trainer:
     """Training pipeline for Gomoku AI"""
     
-    def __init__(self, model: GomokuNet, lr: float = 0.001, batch_size: int = 512):
+    def __init__(self, model: GomokuNet, lr: float = 0.002, batch_size: int = 256):
         self.model = model
         self.device = torch_directml.device()
         self.model.to(self.device)
@@ -114,7 +114,7 @@ class Trainer:
         """Evaluate current model against previous version"""
         # For simplicity, we'll just evaluate against random moves
         wins = 0
-        for _ in range(num_games):
+        for _ in tqdm(range(num_games), desc="评估进度"):
             board = GomokuBoard()
             while not board.winner:
                 if board.current_player == 1:  # AI's turn
@@ -122,16 +122,15 @@ class Trainer:
                     row, col = action // 9, action % 9
                 else:  # Random opponent
                     valid_moves = board.get_valid_moves()
+                    if not valid_moves:
+                        break
                     row, col = random.choice(valid_moves)
-                    
                 board.make_move(row, col)
-                
             if board.winner == 1:
                 wins += 1
-                
         return wins / num_games
         
-    def train_iteration(self, num_self_play: int = 100, num_train_steps: int = 1000) -> dict[str, float]:
+    def train_iteration(self, num_self_play: int = 30, num_train_steps: int = 300) -> dict[str, float]:
         """完成一次完整的训练迭代(自对弈+训练)"""
         # 生成自对弈数据
         self.self_play(num_self_play)
