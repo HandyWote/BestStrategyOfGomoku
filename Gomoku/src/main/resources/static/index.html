@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>五子棋游戏</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>五子棋游戏</h1>
+        </header>
+
+        <div class="game-controls">
+            <div class="control-group">
+                <label for="gameId">游戏ID:</label>
+                <input type="number" id="gameId" value="1" min="1">
+                <label for="boardSize">棋盘大小:</label>
+                <input type="number" id="boardSize" value="9" min="5" max="25" placeholder="5-25">
+                <button id="createGame">创建游戏</button>
+                <button id="loadGame">加载游戏</button>
+            </div>
+
+            <div class="game-info">
+                <div class="info-item">
+                    <span>当前玩家: </span>
+                    <span id="currentPlayer">黑棋</span>
+                </div>
+                <div class="info-item">
+                    <span>游戏状态: </span>
+                    <span id="gameStatus">进行中</span>
+                </div>
+            </div>
+
+            <div class="control-buttons">
+                <button id="resetGame">重新开始</button>
+                <button id="deleteGame">删除游戏</button>
+            </div>
+        </div>
+
+        <div class="game-board-container">
+            <div id="gameBoard" class="game-board">
+                <!-- 棋盘将由JavaScript动态生成 -->
+            </div>
+        </div>
+
+        <div class="message-area">
+            <div id="messageBox" class="message-box"></div>
+        </div>
+    </div>
+
+    <script src="gomoku.js"></script>
+</body>
+</html>

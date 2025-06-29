@@ -1,0 +1,342 @@
+/* 基础样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 15px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+header {
+    background: linear-gradient(45deg, #2c3e50, #3498db);
+    color: white;
+    text-align: center;
+    padding: 20px;
+}
+
+header h1 {
+    font-size: 2.5em;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* 游戏控制区域 */
+.game-controls {
+    padding: 20px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.control-group label {
+    font-weight: bold;
+    color: #495057;
+}
+
+.control-group input {
+    padding: 8px 12px;
+    border: 2px solid #ced4da;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.3s;
+}
+
+.control-group input:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+.control-group button, .control-buttons button {
+    padding: 8px 16px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.control-group button:hover, .control-buttons button:hover {
+    background: #0056b3;
+    transform: translateY(-1px);
+}
+
+.control-group select {
+    padding: 8px 12px;
+    border: 2px solid #ced4da;
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+    cursor: pointer;
+    transition: border-color 0.3s;
+}
+
+.control-group select:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+.game-info {
+    display: flex;
+    gap: 30px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.info-item {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.info-item span:first-child {
+    color: #6c757d;
+}
+
+.info-item span:last-child {
+    color: #495057;
+}
+
+.control-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+#resetGame {
+    background: #28a745 !important;
+}
+
+#resetGame:hover {
+    background: #1e7e34 !important;
+}
+
+#deleteGame {
+    background: #dc3545 !important;
+}
+
+#deleteGame:hover {
+    background: #c82333 !important;
+}
+
+/* 棋盘样式 */
+.game-board-container {
+    display: flex;
+    justify-content: center;
+    padding: 30px;
+    background: #ffffff;
+}
+
+.game-board {
+    background: #deb887;
+    border: 3px solid #8b4513;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    max-width: 90vw;
+    max-height: 80vh;
+    overflow: auto;
+}
+
+.board-grid {
+    display: grid;
+    gap: 1px;
+    background: #8b4513;
+    border: 2px solid #8b4513;
+    border-radius: 5px;
+    justify-content: center;
+}
+
+.cell {
+    border: none;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s;
+    background: #deb887;
+}
+
+.cell:hover {
+    background: #d2b48c;
+    transform: scale(1.05);
+}
+
+.cell.disabled {
+    cursor: not-allowed;
+}
+
+.cell.disabled:hover {
+    background: #deb887;
+    transform: none;
+}
+
+/* 动态调整单元格大小 */
+.board-small .cell {
+    width: 40px;
+    height: 40px;
+}
+
+.board-medium .cell {
+    width: 35px;
+    height: 35px;
+}
+
+.board-large .cell {
+    width: 30px;
+    height: 30px;
+}
+
+.board-xlarge .cell {
+    width: 25px;
+    height: 25px;
+}
+
+/* 棋子样式 */
+.piece {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    animation: placepiece 0.3s ease-out;
+}
+
+@keyframes placepiece {
+    0% {
+        transform: translate(-50%, -50%) scale(0);
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+.piece.black {
+    background: radial-gradient(circle at 30% 30%, #555, #000);
+    border: 1px solid #333;
+}
+
+.piece.white {
+    background: radial-gradient(circle at 30% 30%, #fff, #ddd);
+    border: 1px solid #ccc;
+}
+
+/* 消息区域 */
+.message-area {
+    padding: 20px;
+    background: #f8f9fa;
+}
+
+.message-box {
+    min-height: 50px;
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    border-left: 4px solid #007bff;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.message-box.success {
+    border-left-color: #28a745;
+    color: #155724;
+    background-color: #d4edda;
+}
+
+.message-box.error {
+    border-left-color: #dc3545;
+    color: #721c24;
+    background-color: #f8d7da;
+}
+
+.message-box.info {
+    border-left-color: #17a2b8;
+    color: #0c5460;
+    background-color: #d1ecf1;
+}
+
+.message-box.warning {
+    border-left-color: #ffc107;
+    color: #856404;
+    background-color: #fff3cd;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .container {
+        margin: 0;
+        border-radius: 0;
+    }
+
+    header h1 {
+        font-size: 2em;
+    }
+
+    .game-controls {
+        padding: 15px;
+    }
+
+    .control-group {
+        justify-content: center;
+    }
+
+    .game-info {
+        justify-content: center;
+        text-align: center;
+    }
+
+    .control-buttons {
+        justify-content: center;
+    }
+
+    .cell {
+        width: 30px;
+        height: 30px;
+    }
+
+    .piece {
+        width: 24px;
+        height: 24px;
+    }
+
+    .game-board-container {
+        padding: 20px 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .cell {
+        width: 25px;
+        height: 25px;
+    }
+
+    .piece {
+        width: 20px;
+        height: 20px;
+    }
+
+    .game-board {
+        padding: 15px;
+    }
+}
