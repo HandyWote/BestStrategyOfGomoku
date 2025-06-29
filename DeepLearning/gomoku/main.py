@@ -1,14 +1,18 @@
 import argparse
 import torch
 import time
+import os
 from board import GomokuBoard
 from model import GomokuNet
 from mcts import MCTS
 from train import Trainer
 
-def train_model():
+def train_model(model_path=None):
     """训练五子棋AI模型"""
     model = GomokuNet()
+    if model_path and os.path.exists(model_path):
+        print(f"加载已有模型权重: {model_path}")
+        model.load_state_dict(torch.load(model_path))
     trainer = Trainer(model)
     
     print("\n开始训练五子棋AI模型...")
@@ -21,11 +25,10 @@ def train_model():
         print(f"  价值损失: {metrics['value_loss']:.4f}")
         print(f"  胜率: {metrics['win_rate']:.2%}")
         
-        # 定期保存模型
-        if iteration % 50 == 0:
-            torch.save(model.state_dict(), f"gomoku_model_iter{iteration}.pth")
-            print(f"已保存第{iteration}次迭代的模型")
-            
+        # 每次都保存模型
+        torch.save(model.state_dict(), f"gomoku_model_iter{iteration}.pth")
+        print(f"已保存第{iteration}次迭代的模型")
+        
     print("\n训练完成!")
     torch.save(model.state_dict(), "gomoku_model_final.pth")
     print("最终模型已保存为 gomoku_model_final.pth")
@@ -82,13 +85,11 @@ def main():
     parser = argparse.ArgumentParser(description="五子棋AI系统")
     parser.add_argument('--train', action='store_true', help="训练模型")
     parser.add_argument('--play', action='store_true', help="与AI对战")
-    parser.add_argument('--model', type=str, default="gomoku_model_final.pth", 
-                       help="模型权重文件路径")
-    
+    parser.add_argument('--model', type=str, default=None, help="模型权重文件路径")
     args = parser.parse_args()
-    
+
     if args.train:
-        train_model()
+        train_model(args.model)
     elif args.play:
         play_human_vs_ai(args.model)
     else:

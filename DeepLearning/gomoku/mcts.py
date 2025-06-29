@@ -36,7 +36,7 @@ class Node:
 class MCTS:
     """Monte Carlo Tree Search for Gomoku"""
     
-    def __init__(self, model: GomokuNet, c_puct: float = 1.5, num_simulations: int = 800):
+    def __init__(self, model: GomokuNet, c_puct: float = 1.5, num_simulations: int = 200):
         self.model = model
         self.c_puct = c_puct
         self.num_simulations = num_simulations
