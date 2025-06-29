@@ -20,7 +20,7 @@ jobs:
       - name: Build with Gradle
         run: |
           cd Gomoku
-          ./gradlew build --info、
+          ./gradlew build --info
       - name: 打包构建产物为 zip
         run: |
           cd Gomoku/build/libs
