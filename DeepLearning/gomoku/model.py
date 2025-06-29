@@ -1,14 +1,16 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch_directml
 
 class GomokuNet(nn.Module):
     """Neural network for Gomoku with policy and value heads"""
     
-    def __init__(self):
+    def __init__(self, device=None):
         super().__init__()
-        self.device = torch_directml.device()
+        if device is None:
+            self.device = torch.device("cpu")
+        else:
+            self.device = device
         self.to(self.device)
         
         # Shared convolutional layers

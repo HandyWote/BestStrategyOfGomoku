@@ -1,7 +1,6 @@
 import numpy as np
 import torch
 import torch.optim as optim
-import torch_directml
 from collections import deque
 import random
 from board import GomokuBoard
@@ -9,54 +8,79 @@ from model import GomokuNet
 from mcts import MCTS
 from tqdm import tqdm
 import time
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 class Trainer:
     """Training pipeline for Gomoku AI"""
     
-    def __init__(self, model: GomokuNet, lr: float = 0.002, batch_size: int = 256):
+    def __init__(self, model: GomokuNet, lr: float = 0.001, batch_size: int = 256):
         self.model = model
-        self.device = torch_directml.device()
+        self.device = torch.device("cpu")
         self.model.to(self.device)
         self.optimizer = optim.Adam(model.parameters(), lr=lr)
         self.mcts = MCTS(model)
         self.replay_buffer = deque(maxlen=50000)  # Store 50,000 games
         self.batch_size = batch_size
         
-    def self_play(self, num_games: int = 100) -> None:
-        """生成自对弈数据并存入经验池"""
-        print(f"\n开始生成{num_games}局自对弈数据...")
-        
-        for game_idx in tqdm(range(num_games), desc="自对弈进度"):
+    def generate_self_play_games(self, model_state_dict, num_games):
+        import torch
+        from model import GomokuNet
+        from mcts import MCTS
+        from board import GomokuBoard
+        import numpy as np
+        model = GomokuNet(device=torch.device("cpu"))
+        model.load_state_dict(model_state_dict)
+        mcts = MCTS(model)
+        games = []
+        for _ in range(num_games):
             board = GomokuBoard()
             game_history = []
-            
             while not board.winner:
-                # Get action probabilities from MCTS
-                action_probs = self.mcts.search(board)
-                
-                # Store training sample
+                action_probs = mcts.search(board)
                 game_history.append({
                     'state': board.get_state(),
                     'policy': action_probs,
                     'player': board.current_player
                 })
-                
-                # Make move
-                action = self.mcts.get_move(board, temperature=1.0)
+                action = mcts.get_move(board, temperature=1.0)
                 row, col = action // 9, action % 9
                 board.make_move(row, col)
-                
-                # 每10步显示一次棋盘
-                if len(game_history) % 10 == 0:
-                    print(f"\n对局 {game_idx + 1}, 步数 {len(game_history)}:")
-                    board.display()
-                    time.sleep(0.5)  # 暂停以便观察
-                
-            # Add game results to samples
             for sample in game_history:
                 sample['value'] = 1 if board.winner == sample['player'] else -1
+            games.append(game_history)
+        return games
+
+    def self_play(self, num_games: int = 100) -> None:
+        print(f"\n开始生成{num_games}局自对弈数据...")
+
+        num_workers = 4
+        games_per_worker = num_games // num_workers
+        remainder = num_games % num_workers
+        tasks = [games_per_worker] * num_workers
+        for i in range(remainder):
+            tasks[i] += 1
+
+        # 保证参数在CPU
+        model_state_dict = {k: v.cpu() for k, v in self.model.state_dict().items()}
+        all_games = []
+        with ProcessPoolExecutor(max_workers=num_workers) as executor:
+            futures = [executor.submit(self.generate_self_play_games, model_state_dict, n) for n in tasks]
+            with tqdm(total=num_games, desc="自对弈进度") as pbar:
+                for future in as_completed(futures):
+                    result = future.result()
+                    all_games.extend(result)
+                    pbar.update(len(result))
+
+        for game_idx, game_history in enumerate(all_games):
+            print(f"\n对局 {game_idx + 1}, 步数 {len(game_history)}:")
+            board = GomokuBoard()
+            for move in game_history:
+                board.board = np.array(move['state']['board'])
+                board.current_player = move['state']['current_player']
+            board.display()
+            for sample in game_history:
                 self.replay_buffer.append(sample)
-                
+        
     def train_step(self) -> dict[str, float]:
         """Perform one training step on a batch of samples"""
         if len(self.replay_buffer) < self.batch_size:
