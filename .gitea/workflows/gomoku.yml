@@ -28,7 +28,7 @@ jobs:
           cd Gomoku/build/libs
           zip -r gomoku-artifact.zip *.jar
       - name: 上传 zip 包
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: gomoku-zip
           path: Gomoku/build/libs/gomoku-artifact.zip
