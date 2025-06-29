@@ -21,14 +21,8 @@ jobs:
         run: |
           cd Gomoku
           ./gradlew build --info
-      - name: 安装 zip 工具
-        run: apt-get update && apt-get install -y zip
-      - name: 打包构建产物为 zip
-        run: |
-          cd Gomoku/build/libs
-          zip -r gomoku-artifact.zip *.jar
-      - name: 上传 zip 包
+      - name: 上传所有 jar 包
         uses: actions/upload-artifact@v3
         with:
-          name: gomoku-zip
-          path: Gomoku/build/libs/gomoku-artifact.zip
+          name: gomoku-jars
+          path: Gomoku/build/libs/*.jar
