@@ -17,6 +17,8 @@ Thumbs.db
 *.sw?
 .promptx
 myenv
+.venv
+
 
 # 日志文件
 *.log
@@ -28,6 +30,7 @@ yarn-error.log*
 node_modules/
 bower_components/
 jspm_packages/
+__pycache__
 
 # 构建输出
 dist/
