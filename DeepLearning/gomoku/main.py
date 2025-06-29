@@ -12,7 +12,7 @@ def train_model():
     trainer = Trainer(model)
     
     print("\n开始训练五子棋AI模型...")
-    for iteration in range(1, 1001):  # 1000次迭代
+    for iteration in range(1, 10001):  # 10000次迭代
         metrics = trainer.train_iteration()
         
         print(f"\n迭代 {iteration}:")
