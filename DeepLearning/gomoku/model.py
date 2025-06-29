@@ -1,12 +1,15 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch_directml
 
 class GomokuNet(nn.Module):
     """Neural network for Gomoku with policy and value heads"""
     
     def __init__(self):
         super().__init__()
+        self.device = torch_directml.device()
+        self.to(self.device)
         
         # Shared convolutional layers
         self.conv1 = nn.Conv2d(1, 32, kernel_size=3, padding=1)
@@ -45,7 +48,7 @@ class GomokuNet(nn.Module):
     def predict(self, board_state):
         """Predict policy and value for a single board state"""
         # Convert board state to tensor
-        board = torch.FloatTensor(board_state['board']).unsqueeze(0).unsqueeze(0)
+        board = torch.FloatTensor(board_state['board']).unsqueeze(0).unsqueeze(0).to(self.device)
         
         # Normalize for current player
         if board_state['current_player'] == -1:

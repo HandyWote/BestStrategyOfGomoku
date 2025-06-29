@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torch.optim as optim
+import torch_directml
 from collections import deque
 import random
 from board import GomokuBoard
@@ -14,6 +15,8 @@ class Trainer:
     
     def __init__(self, model: GomokuNet, lr: float = 0.001, batch_size: int = 512):
         self.model = model
+        self.device = torch_directml.device()
+        self.model.to(self.device)
         self.optimizer = optim.Adam(model.parameters(), lr=lr)
         self.mcts = MCTS(model)
         self.replay_buffer = deque(maxlen=50000)  # Store 50,000 games
@@ -84,9 +87,9 @@ class Trainer:
             value_targets.append(sample['value'])
             
         # Convert to tensors
-        states = torch.FloatTensor(np.array(states)).unsqueeze(1)  # Add channel dim
-        policy_targets = torch.FloatTensor(np.array(policy_targets))
-        value_targets = torch.FloatTensor(np.array(value_targets)).unsqueeze(1)
+        states = torch.FloatTensor(np.array(states)).unsqueeze(1).to(self.device)  # Add channel dim
+        policy_targets = torch.FloatTensor(np.array(policy_targets)).to(self.device)
+        value_targets = torch.FloatTensor(np.array(value_targets)).unsqueeze(1).to(self.device)
         
         # Forward pass
         policy_logits, values = self.model(states)
