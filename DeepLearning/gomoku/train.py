@@ -9,6 +9,7 @@ from mcts import MCTS
 from tqdm import tqdm
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from typing import Dict
 
 class Trainer:
     """Training pipeline for Gomoku AI"""
@@ -81,7 +82,7 @@ class Trainer:
             for sample in game_history:
                 self.replay_buffer.append(sample)
         
-    def train_step(self) -> dict[str, float]:
+    def train_step(self) -> Dict[str, float]:
         """Perform one training step on a batch of samples"""
         if len(self.replay_buffer) < self.batch_size:
             return {'loss': 0, 'policy_loss': 0, 'value_loss': 0}
@@ -154,7 +155,7 @@ class Trainer:
                 wins += 1
         return wins / num_games
         
-    def train_iteration(self, num_self_play: int = 30, num_train_steps: int = 300) -> dict[str, float]:
+    def train_iteration(self, num_self_play: int = 30, num_train_steps: int = 300) -> Dict[str, float]:
         """完成一次完整的训练迭代(自对弈+训练)"""
         # 生成自对弈数据
         self.self_play(num_self_play)
