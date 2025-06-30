@@ -21,8 +21,9 @@ jobs:
         run: |
           cd Gomoku
           ./gradlew build --info --build-cache --parallel
-      - name: 新建 README.md
+      - name: 新建 README.md & 复制 游戏本体使用介绍.md
         run: |
+          cp 游戏本体使用介绍.md Gomoku/
           cat > Gomoku/README.md <<'EOF'
           ## 直接运行程序
             1. 解压缩所有文件在同一文件夹中
@@ -50,4 +51,5 @@ jobs:
             Gomoku/Dockerfile
             Gomoku/docker-compose.yml
             Gomoku/README.md
+            Gomoku/游戏本体使用介绍.md
             
