@@ -26,3 +26,16 @@ jobs:
         with:
           name: gomoku-jars
           path: Gomoku/build/libs/*.jar
+
+      - name: 使用 docker-compose 构建镜像
+        run: docker-compose build
+
+      - name: 导出镜像为 tar 文件
+        run: |
+          docker save -o gomoku-docker.tar gomoku:latest
+
+      - name: 上传镜像 tar 文件
+        uses: actions/upload-artifact@v3
+        with:
+          name: gomoku-docker-tar
+          path: Gomoku/gomoku-docker.tar
