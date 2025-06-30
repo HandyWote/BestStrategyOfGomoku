@@ -207,13 +207,13 @@ class Trainer:
         """快评估：10局，每步MCTS 20次，适合训练中快速监控"""
         return self.evaluate(num_games=10, mcts_simulations=20)
 
-    def evaluate_worker(self, model_state_dict, num_games, mcts_simulations):
+    def evaluate_worker(self, model_state_dict, num_games, mcts_simulations, device_str):
         import torch
         from model import GomokuNet
         from mcts import MCTS
         from board import GomokuBoard
         import numpy as np
-        device = torch.device("cpu")  # 多进程评估用CPU更安全
+        device = torch.device(device_str)
         model = GomokuNet(device=device)
         model.load_state_dict(model_state_dict)
         eval_mcts = MCTS(model, num_simulations=mcts_simulations)
@@ -236,6 +236,9 @@ class Trainer:
 
     def evaluate_parallel(self, num_games=100, mcts_simulations=200, num_workers=4):
         from concurrent.futures import ProcessPoolExecutor, as_completed
+        import torch
+        device_str = "cuda" if torch.cuda.is_available() else "cpu"
+        print(f"[INFO] 评估进程将使用设备: {device_str}")
         games_per_worker = num_games // num_workers
         remainder = num_games % num_workers
         tasks = [games_per_worker] * num_workers
@@ -244,7 +247,7 @@ class Trainer:
         model_state_dict = {k: v.cpu() for k, v in self.model.state_dict().items()}
         total_wins = 0
         with ProcessPoolExecutor(max_workers=num_workers) as executor:
-            futures = [executor.submit(self.evaluate_worker, model_state_dict, n, mcts_simulations) for n in tasks]
+            futures = [executor.submit(self.evaluate_worker, model_state_dict, n, mcts_simulations, device_str) for n in tasks]
             for future in as_completed(futures):
                 total_wins += future.result()
         return total_wins / num_games
