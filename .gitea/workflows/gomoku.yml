@@ -20,12 +20,17 @@ jobs:
       - name: Build with Gradle
         run: |
           cd Gomoku
-          ./gradlew build --info
+          ./gradlew build --info --build-cache --parallel
       - name: 上传所有 jar 包
         uses: actions/upload-artifact@v3
         with:
           name: gomoku-jars
           path: Gomoku/build/libs/*.jar
+
+      - name: 安装 docker-compose
+        run: |
+          apt-get update
+          sudo apt-get install -y docker-compose
 
       - name: 使用 docker-compose 构建镜像
         run: docker-compose build
