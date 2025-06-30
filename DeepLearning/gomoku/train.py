@@ -46,10 +46,14 @@ class Trainer:
         model.load_state_dict(model_state_dict)
         mcts = MCTS(model)
         games = []
-        for _ in range(num_games):
+        print(f"[DEBUG] generate_self_play_games 启动, num_games={num_games}")
+        for game_idx in range(num_games):
+            print(f"[DEBUG] 开始第{game_idx+1}局自对弈")
             board = GomokuBoard()
             game_history = []
+            step = 0
             while not board.winner:
+                print(f"[DEBUG] 第{game_idx+1}局, step={step}, 当前玩家: {board.current_player}")
                 action_probs = mcts.search(board)
                 game_history.append({
                     'state': board.get_state(),
@@ -59,15 +63,18 @@ class Trainer:
                 action = mcts.get_move(board, temperature=1.0)
                 row, col = action // 9, action % 9
                 board.make_move(row, col)
+                step += 1
+            print(f"[DEBUG] 第{game_idx+1}局结束, 总步数: {step}")
             for sample in game_history:
                 sample['value'] = 1 if board.winner == sample['player'] else -1
             games.append(game_history)
+        print(f"[DEBUG] generate_self_play_games 结束, 共生成{len(games)}局")
         return games
 
     def self_play(self, num_games: int = 100) -> None:
         print(f"\n开始生成{num_games}局自对弈数据...")
 
-        num_workers = 4
+        num_workers = 1  # 只用单进程，避免多进程卡死
         games_per_worker = num_games // num_workers
         remainder = num_games % num_workers
         tasks = [games_per_worker] * num_workers
