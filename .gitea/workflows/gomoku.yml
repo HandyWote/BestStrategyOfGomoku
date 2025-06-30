@@ -23,7 +23,7 @@ jobs:
           ./gradlew build --info --build-cache --parallel
       - name: 新建 README.md
         run: |
-          cat > Gomoku/README.md <<EOF
+          cat > Gomoku/README.md <<'EOF'
           ## 直接运行程序
             1. 解压缩所有文件在同一文件夹中
             2. 打开终端，进入到解压目录下，运行以下命令：
@@ -38,6 +38,7 @@ jobs:
           ```
           docker-compose up --build
           ```
+          - name: 新建 README.md
           EOF
       - name: 上传所有 jar 包
         uses: actions/upload-artifact@v3
