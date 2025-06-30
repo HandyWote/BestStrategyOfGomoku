@@ -207,9 +207,52 @@ class Trainer:
         """快评估：10局，每步MCTS 20次，适合训练中快速监控"""
         return self.evaluate(num_games=10, mcts_simulations=20)
 
+    def evaluate_worker(self, model_state_dict, num_games, mcts_simulations):
+        import torch
+        from model import GomokuNet
+        from mcts import MCTS
+        from board import GomokuBoard
+        import numpy as np
+        device = torch.device("cpu")  # 多进程评估用CPU更安全
+        model = GomokuNet(device=device)
+        model.load_state_dict(model_state_dict)
+        eval_mcts = MCTS(model, num_simulations=mcts_simulations)
+        wins = 0
+        for _ in range(num_games):
+            board = GomokuBoard()
+            while not board.winner:
+                if board.current_player == 1:  # AI's turn
+                    action = eval_mcts.get_move(board, temperature=0.1)
+                    row, col = action // 9, action % 9
+                else:  # Random opponent
+                    valid_moves = board.get_valid_moves()
+                    if not valid_moves:
+                        break
+                    row, col = random.choice(valid_moves)
+                board.make_move(row, col)
+            if board.winner == 1:
+                wins += 1
+        return wins
+
+    def evaluate_parallel(self, num_games=100, mcts_simulations=200, num_workers=4):
+        from concurrent.futures import ProcessPoolExecutor, as_completed
+        games_per_worker = num_games // num_workers
+        remainder = num_games % num_workers
+        tasks = [games_per_worker] * num_workers
+        for i in range(remainder):
+            tasks[i] += 1
+        model_state_dict = {k: v.cpu() for k, v in self.model.state_dict().items()}
+        total_wins = 0
+        with ProcessPoolExecutor(max_workers=num_workers) as executor:
+            futures = [executor.submit(self.evaluate_worker, model_state_dict, n, mcts_simulations) for n in tasks]
+            for future in as_completed(futures):
+                total_wins += future.result()
+        return total_wins / num_games
+
     def evaluate_full(self) -> float:
-        """全量评估：100局，每步MCTS 200次，适合最终模型实力评测"""
-        return self.evaluate(num_games=100, mcts_simulations=200)
+        """全量评估：100局，每步MCTS 200次，适合最终模型实力评测（多进程加速）"""
+        print("[INFO] 使用多进程并发评估...")
+        return self.evaluate_parallel(num_games=100, mcts_simulations=200, num_workers=4)
 
     def train_iteration(self, num_self_play: int = 30, num_train_steps: int = 300) -> Dict[str, float]:
         """完成一次完整的训练迭代(自对弈+训练)"""

@@ -24,7 +24,7 @@ def train_model(model_path=None):
     if model_path and os.path.exists(model_path):
         print(f"加载已有模型权重: {model_path}")
         model.load_state_dict(torch.load(model_path, map_location=device))
-    trainer = Trainer(model)
+    trainer = Trainer(model, opponent_model_path="models/best_model.pth")
     os.makedirs("models", exist_ok=True)
     print("\n开始训练五子棋AI模型...")
     for iteration in range(1, 1001):  # 1000次迭代
