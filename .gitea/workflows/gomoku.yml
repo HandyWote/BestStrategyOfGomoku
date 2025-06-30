@@ -21,23 +21,60 @@ jobs:
         run: |
           cd Gomoku
           ./gradlew build --info --build-cache --parallel
-#      - name: 上传所有 jar 包
-#        uses: actions/upload-artifact@v3
-#        with:
-#          name: gomoku-jars
-#          path: Gomoku/build/libs/*.jar
+      - name: 新建 Dockerfile
+        run: |
+          cat > Gomoku/Dockerfile <<EOF
+          # 使用官方OpenJDK 17运行时作为基础镜像
+          FROM openjdk:17-jdk-slim
 
-      - name: 安装 Docker
-        uses: docker/setup-buildx-action@v3
-      - name: 构建 Docker 镜像
+          # 设置工作目录
+          WORKDIR /app
+
+          # 将构建好的JAR文件复制到容器中
+          COPY Gomoku-0.0.1-SNAPSHOT.jar app.jar
+
+          # 暴露端口
+          EXPOSE 10086
+
+          # 运行应用
+          ENTRYPOINT ["sh", "-c", "java \$JAVA_OPTS -jar app.jar"]
+          EOF
+      - name: 新建 docker-compose.yml
         run: |
-          cd Gomoku
-          docker build -t gomoku:latest .
-      - name: 导出镜像为 tar 文件
+          cat > Gomoku/docker-compose.yml <<EOF
+          version: '3'
+          services:
+            gomoku:
+              build: .
+              image: gomoku:latest
+              ports:
+                - "10086:10086"
+              container_name: gomoku-app
+          EOF
+      - name: 新建 README.md
         run: |
-          docker save -o Gomoku/gomoku-docker.tar gomoku:latest
-      - name: 上传镜像 tar 文件
+          cat > Gomoku/README.md <<EOF
+          ## 直接运行程序
+            1.解压缩所有文件在同一文件夹中
+            2.打开终端，进入到解压目录下，运行以下命令：
+            ```
+            java -jar Gomoku-0.0.1-SNAPSHOT.jar
+            ```
+          ## 使用Docker Compose运行程序
+          1. 请确保已安装Docker和Docker Compose
+          2. 然后解压缩所有文件在同一文件夹中
+          3. 按需求修改Dockerfile与docker-compose.yml文件（默认端口10086）
+          4. 打开终端，进入到解压目录下，运行以下命令启动服务：
+          ```
+          docker-compose up --build
+          ```
+          EOF
+      - name: 上传所有 jar 包
         uses: actions/upload-artifact@v3
         with:
-          name: gomoku-docker-tar
-          path: Gomoku/gomoku-docker.tar
+          name: gomoku-jars
+          path: |
+            Gomoku/build/libs/*.jar
+            Gomoku/Dockerfile
+            Gomoku/docker-compose.yml
+            
