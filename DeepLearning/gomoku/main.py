@@ -2,6 +2,8 @@ import argparse
 import torch
 import time
 import os
+import multiprocessing as mp
+mp.set_start_method('spawn', force=True)
 from board import GomokuBoard
 from model import GomokuNet
 from mcts import MCTS
