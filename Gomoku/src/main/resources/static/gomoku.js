@@ -77,8 +77,8 @@ class GomokuGame {
             for (let j = 0; j < this.boardSize; j++) {
                 const cell = document.createElement('button');
                 cell.className = 'cell';
-                cell.dataset.row = i;
-                cell.dataset.col = j;
+                cell.dataset.row = i.toString();
+                cell.dataset.col = j.toString();
                 cell.addEventListener('click', () => this.makeMove(i, j));
                 grid.appendChild(cell);
             }
@@ -127,7 +127,7 @@ class GomokuGame {
                 this.showMessage(`游戏 ${this.gameId} (${this.boardSize}x${this.boardSize}) 创建成功！`, 'success');
                 await this.loadGame();
             } else {
-                this.showMessage(`创建游戏失败: ${result.msg}`, 'error');
+                this.showMessage(`创建游戏失败: ${result.msg} `, 'error');
             }
         } catch (error) {
             this.showMessage(`创建游戏时发生错误: ${error.message}`, 'error');
