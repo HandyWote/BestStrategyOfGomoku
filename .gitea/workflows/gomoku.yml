@@ -77,4 +77,5 @@ jobs:
             Gomoku/build/libs/*.jar
             Gomoku/Dockerfile
             Gomoku/docker-compose.yml
+            Gomoku/README.md
             
