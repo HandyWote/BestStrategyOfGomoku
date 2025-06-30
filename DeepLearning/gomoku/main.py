@@ -25,24 +25,16 @@ def train_model(model_path=None):
         print(f"加载已有模型权重: {model_path}")
         model.load_state_dict(torch.load(model_path, map_location=device))
     trainer = Trainer(model)
-    
+    os.makedirs("models", exist_ok=True)
     print("\n开始训练五子棋AI模型...")
     for iteration in range(1, 1001):  # 1000次迭代
         metrics = trainer.train_iteration()
-        
         print(f"\n迭代 {iteration}:")
         print(f"  总损失: {metrics['loss']:.4f}")
         print(f"  策略损失: {metrics['policy_loss']:.4f}") 
         print(f"  价值损失: {metrics['value_loss']:.4f}")
         print(f"  胜率: {metrics['win_rate']:.2%}")
-        
-        # 每次都保存模型
-        torch.save(model.state_dict(), f"gomoku_model_iter{iteration}.pth")
-        print(f"已保存第{iteration}次迭代的模型")
-        
     print("\n训练完成!")
-    torch.save(model.state_dict(), "gomoku_model_final.pth")
-    print("最终模型已保存为 gomoku_model_final.pth")
 
 def play_human_vs_ai(model_path: str = "gomoku_model_final.pth"):
     """人机对战"""
