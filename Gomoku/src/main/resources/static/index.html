@@ -3,51 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>五子棋游戏</title>
+    <title>五子棋</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>五子棋游戏</h1>
+        <!-- 标题区域 -->
+        <header class="header">
+            <h1>五子棋</h1>
+            <p class="subtitle">落子连五获胜</p>
         </header>
 
-        <div class="game-controls">
-            <div class="control-group">
-                <label for="gameId">游戏ID:</label>
-                <input type="number" id="gameId" value="1" min="1">
-                <label for="boardSize">棋盘大小:</label>
-                <input type="number" id="boardSize" value="9" min="5" max="25" placeholder="5-25">
-                <button id="createGame">创建游戏</button>
-                <button id="loadGame">加载游戏</button>
+        <div class="main-content">
+            <!-- 左侧控制面板 -->
+            <div class="control-panel">
+                <!-- 游戏设置 -->
+                <div class="control-section">
+                    <div class="input-group">
+                        <label for="gameId">游戏ID:</label>
+                        <input type="number" id="gameId" value="1" min="1">
+                    </div>
+                    <div class="input-group">
+                        <label for="boardSize">棋盘大小:</label>
+                        <input type="number" id="boardSize" value="9" min="5" max="25">
+                    </div>
+                    <div class="button-group">
+                        <button id="createGame" class="btn btn-primary">创建游戏</button>
+                        <button id="loadGame" class="btn btn-secondary">加载游戏</button>
+                    </div>
+                </div>
+
+                <!-- 游戏状态 -->
+                <div class="status-section">
+                    <div class="status-item">
+                        <div class="status-icon">ℹ️</div>
+                        <div class="status-content">
+                            <h3>游戏状态</h3>
+                            <div class="player-info">
+                                <div class="player-indicator">
+                                    <div class="piece black"></div>
+                                    <span>黑方</span>
+                                </div>
+                                <div class="player-indicator">
+                                    <div class="piece white"></div>
+                                    <span>白方</span>
+                                </div>
+                                <div class="current-turn">
+                                    <span>当前回合: </span>
+                                    <div class="current-piece"></div>
+                                    <span id="currentPlayer">黑棋</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="status-item">
+                        <div class="status-icon">🏆</div>
+                        <div class="status-content">
+                            <h3>游戏结果</h3>
+                            <div class="game-result">
+                                <span id="gameStatus">游戏进行中</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 游戏控制按钮 -->
+                <div class="action-section">
+                    <button id="resetGame" class="btn btn-restart">
+                        <span>🔄</span>
+                        重新开始
+                    </button>
+                    <button id="deleteGame" class="btn btn-undo">
+                        <span>↶</span>
+                        悔棋
+                    </button>
+                </div>
             </div>
 
-            <div class="game-info">
-                <div class="info-item">
-                    <span>当前玩家: </span>
-                    <span id="currentPlayer">黑棋</span>
+            <!-- 右侧棋盘区域 -->
+            <div class="board-area">
+                <div id="gameBoard" class="game-board">
+                    <!-- 棋盘将由JavaScript动态生成 -->
                 </div>
-                <div class="info-item">
-                    <span>游戏状态: </span>
-                    <span id="gameStatus">进行中</span>
-                </div>
-            </div>
-
-            <div class="control-buttons">
-                <button id="resetGame">重新开始</button>
-                <button id="deleteGame">删除游戏</button>
             </div>
         </div>
 
-        <div class="game-board-container">
-            <div id="gameBoard" class="game-board">
-                <!-- 棋盘将由JavaScript动态生成 -->
-            </div>
-        </div>
-
+        <!-- 消息提示区域 -->
         <div class="message-area">
             <div id="messageBox" class="message-box"></div>
         </div>
+
+        <!-- 页脚 -->
+        <footer class="footer">
+            <p>© 2025 五子棋网页版 | 使用HTML, CSS和JavaScript构建</p>
+        </footer>
     </div>
 
     <script src="gomoku.js"></script>
