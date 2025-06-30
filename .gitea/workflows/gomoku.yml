@@ -27,18 +27,13 @@ jobs:
           name: gomoku-jars
           path: Gomoku/build/libs/*.jar
 
-      - name: 安装 docker-compose
+      - name: 构建 Docker 镜像
         run: |
-          apt-get update
-          sudo apt-get install -y docker-compose
-
-      - name: 使用 docker-compose 构建镜像
-        run: docker-compose build
-
+          cd Gomoku
+          docker build -t gomoku:latest .
       - name: 导出镜像为 tar 文件
         run: |
-          docker save -o gomoku-docker.tar gomoku:latest
-
+          docker save -o Gomoku/gomoku-docker.tar gomoku:latest
       - name: 上传镜像 tar 文件
         uses: actions/upload-artifact@v3
         with:
