@@ -42,6 +42,17 @@ class GomokuGame {
         document.getElementById('boardSize').addEventListener('change', (e) => {
             this.updateBoardSize(parseInt(e.target.value) || 9);
         });
+
+        // 胜利弹窗事件绑定
+        document.getElementById('newGameBtn').addEventListener('click', () => this.startNewGame());
+        document.getElementById('closeModalBtn').addEventListener('click', () => this.hideVictoryModal());
+
+        // 点击弹窗背景关闭
+        document.getElementById('victoryModal').addEventListener('click', (e) => {
+            if (e.target.id === 'victoryModal') {
+                this.hideVictoryModal();
+            }
+        });
     }
 
     /**
@@ -253,9 +264,11 @@ class GomokuGame {
             if (this.winner === 0) {
                 currentPlayerElement.textContent = '平局';
                 gameStatusElement.textContent = '游戏平局';
+                this.showVictoryModal(0); // 显示平局弹窗
             } else {
                 currentPlayerElement.textContent = this.getPlayerName(this.winner);
                 gameStatusElement.textContent = `${this.getPlayerName(this.winner)} 获胜！`;
+                this.showVictoryModal(this.winner); // 显示胜利弹窗
             }
         } else {
             currentPlayerElement.textContent = this.getPlayerName(this.currentPlayer);
@@ -344,6 +357,45 @@ class GomokuGame {
                 messageBox.className = 'message-box';
             }
         }, 3000);
+    }
+
+    /**
+     * 显示胜利弹窗
+     * @param {number} winner 胜利者标识: 1=黑棋获胜, -1=白棋获胜, 0=平局
+     */
+    showVictoryModal(winner) {
+        const modal = document.getElementById('victoryModal');
+        const titleElement = document.getElementById('victoryTitle');
+        const messageElement = document.getElementById('victoryMessage');
+
+        if (winner === 0) {
+            titleElement.textContent = '游戏平局';
+            messageElement.textContent = '棋盘已满，本局平局！';
+        } else if (winner === 1) {
+            titleElement.textContent = '黑棋获胜！';
+            messageElement.textContent = '恭喜黑方玩家获得胜利！';
+        } else {
+            titleElement.textContent = '白棋获胜！';
+            messageElement.textContent = '恭喜白方玩家获得胜利！';
+        }
+
+        modal.classList.add('show');
+    }
+
+    /**
+     * 隐藏胜利弹窗
+     */
+    hideVictoryModal() {
+        const modal = document.getElementById('victoryModal');
+        modal.classList.remove('show');
+    }
+
+    /**
+     * 开始新游戏：隐藏胜利弹窗，重置游戏状态
+     */
+    async startNewGame() {
+        this.hideVictoryModal();
+        await this.resetGame();
     }
 }
 

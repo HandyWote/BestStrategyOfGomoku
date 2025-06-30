@@ -323,16 +323,6 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    animation: placepiece 0.3s ease-out;
-}
-
-@keyframes placepiece {
-    0% {
-        transform: translate(-50%, -50%) scale(0);
-    }
-    100% {
-        transform: translate(-50%, -50%) scale(1);
-    }
 }
 
 /* 动态调整单元格大小 */
@@ -433,16 +423,59 @@ body {
     opacity: 1;
 }
 
-/* 页脚 */
-.footer {
-    text-align: center;
-    margin-top: 30px;
-    padding: 20px;
-    color: #7f8c8d;
-    font-size: 0.9rem;
+/* 胜利弹窗样式 - 简化版 */
+.victory-modal {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.victory-modal.show {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.victory-modal-content {
     background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+    padding: 30px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    max-width: 300px;
+    width: 90%;
+    border: 2px solid #3498db;
+}
+
+.victory-modal h2 {
+    color: #2c3e50;
+    font-size: 1.5rem;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.victory-modal p {
+    color: #34495e;
+    font-size: 1rem;
+    margin-bottom: 25px;
+}
+
+.victory-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.victory-buttons .btn {
+    min-width: 80px;
+    padding: 10px 16px;
+    font-size: 0.9rem;
+    border-radius: 6px;
 }
 
 /* 响应式设计 */
@@ -512,4 +545,31 @@ body {
         left: 10px;
         max-width: none;
     }
+
+    /* 移动端胜利弹窗调整 */
+    .victory-modal-content {
+        padding: 25px 20px;
+        margin: 20px;
+    }
+
+    .victory-buttons {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .victory-buttons .btn {
+        width: 100%;
+    }
+}
+
+/* 页脚 */
+.footer {
+    text-align: center;
+    margin-top: 30px;
+    padding: 20px;
+    color: #7f8c8d;
+    font-size: 0.9rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
