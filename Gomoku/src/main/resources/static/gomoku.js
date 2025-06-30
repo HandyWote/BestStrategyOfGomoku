@@ -1,21 +1,34 @@
+// GomokuGame 类：负责游戏逻辑与界面交互
 class GomokuGame {
     constructor() {
+        // 游戏ID（用于标识不同棋局）
         this.gameId = 1;
+        // 棋盘尺寸（x 和 y 相同）
         this.boardSize = 9;
-        this.currentPlayer = 1; // 1为黑棋，2为白棋
+        // 当前玩家: 1 为黑棋，-1 为白棋
+        this.currentPlayer = 1;
+        // 二维数组表示棋盘状态，0 = 空，1 = 黑棋，-1 = 白棋
         this.gameBoard = [];
+        // 游戏是否结束标志
         this.isGameOver = false;
+        // 获胜方: 1 黑棋，-1 白棋，0 平局
         this.winner = null;
 
         this.init();
     }
 
+    /**
+     * 初始化方法：绑定事件、创建棋盘、显示欢迎信息
+     */
     init() {
         this.bindEvents();
         this.createBoard();
         this.showMessage('欢迎来到五子棋游戏！选择棋盘大小后点击"创建游戏"开始新游戏。', 'info');
     }
 
+    /**
+     * 绑定页面上各按钮和输入框的事件处理函数
+     */
     bindEvents() {
         document.getElementById('createGame').addEventListener('click', () => this.createGame());
         document.getElementById('loadGame').addEventListener('click', () => this.loadGame());
@@ -31,6 +44,10 @@ class GomokuGame {
         });
     }
 
+    /**
+     * 更新棋盘大小：校验范围、重建棋盘、提示消息
+     * @param {number} size 新的棋盘边长
+     */
     updateBoardSize(size) {
         // 限制棋盘大小在合理范围内
         if (size < 5) size = 5;
@@ -42,6 +59,9 @@ class GomokuGame {
         this.showMessage(`棋盘大小已设置为 ${size}x${size}`, 'info');
     }
 
+    /**
+     * 创建棋盘DOM：生成 grid 容器和多个 cell 按钮
+     */
     createBoard() {
         const boardContainer = document.getElementById('gameBoard');
         boardContainer.innerHTML = '';
@@ -67,6 +87,9 @@ class GomokuGame {
         boardContainer.appendChild(grid);
     }
 
+    /**
+     * 根据 boardSize 返回对应CSS类，控制单元格大小
+     */
     getBoardSizeClass() {
         if (this.boardSize <= 9) {
             return 'board-small';
@@ -79,6 +102,9 @@ class GomokuGame {
         }
     }
 
+    /**
+     * 发起创建游戏的 API 请求
+     */
     async createGame() {
         try {
             this.gameId = parseInt(document.getElementById('gameId').value) || 1;
@@ -108,6 +134,9 @@ class GomokuGame {
         }
     }
 
+    /**
+     * 加载指定游戏数据并更新界面
+     */
     async loadGame() {
         try {
             this.gameId = parseInt(document.getElementById('gameId').value) || 1;
@@ -142,6 +171,11 @@ class GomokuGame {
         }
     }
 
+    /**
+     * 执行落子操作：调用API并刷新游戏状态
+     * @param {number} row 行索引
+     * @param {number} col 列索引
+     */
     async makeMove(row, col) {
         if (this.isGameOver) {
             this.showMessage('游戏已结束，请重新开始或创建新游戏！', 'warning');
@@ -180,6 +214,9 @@ class GomokuGame {
         }
     }
 
+    /**
+     * 更新棋盘显示：根据 this.gameBoard 渲染棋子
+     */
     updateBoard() {
         const cells = document.querySelectorAll('.cell');
 
@@ -205,6 +242,9 @@ class GomokuGame {
         });
     }
 
+    /**
+     * 更新游戏信息面板：当前玩家和游戏结果
+     */
     updateGameInfo() {
         const currentPlayerElement = document.getElementById('currentPlayer');
         const gameStatusElement = document.getElementById('gameStatus');
@@ -223,10 +263,18 @@ class GomokuGame {
         }
     }
 
+    /**
+     * 根据玩家值返回名称：1 -> 黑棋，-1 -> 白棋
+     * @param {number} player 玩家标识
+     * @returns {string}
+     */
     getPlayerName(player) {
         return player === 1 ? '黑棋' : '白棋';
     }
 
+    /**
+     * 重置游戏：先删除再创建，并提示用户
+     */
     async resetGame() {
         try {
             // 先删除当前游戏
@@ -241,6 +289,10 @@ class GomokuGame {
         }
     }
 
+    /**
+     * 删除当前游戏：调用DELETE接口，重置本地状态
+     * @param {boolean} showMessage 是否显示提示消息
+     */
     async deleteGame(showMessage = true) {
         try {
             const response = await fetch(`/api/gomoku/${this.gameId}`, {
@@ -275,6 +327,11 @@ class GomokuGame {
         }
     }
 
+    /**
+     * 显示提示消息，并在3秒后自动清除
+     * @param {string} message 要显示的文本
+     * @param {string} type 消息类型: 'success','error','warning','info'
+     */
     showMessage(message, type = 'info') {
         const messageBox = document.getElementById('messageBox');
         messageBox.textContent = message;
@@ -290,7 +347,7 @@ class GomokuGame {
     }
 }
 
-// 页面加载完成后初始化游戏
+// 页面加载完成后实例化游戏
 document.addEventListener('DOMContentLoaded', () => {
     new GomokuGame();
 });
