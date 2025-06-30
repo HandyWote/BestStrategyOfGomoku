@@ -74,7 +74,7 @@ class Trainer:
     def self_play(self, num_games: int = 100) -> None:
         print(f"\n开始生成{num_games}局自对弈数据...")
 
-        num_workers = 1  # 只用单进程，避免多进程卡死
+        num_workers = 8  # 只用单进程，避免多进程卡死
         games_per_worker = num_games // num_workers
         remainder = num_games % num_workers
         tasks = [games_per_worker] * num_workers
