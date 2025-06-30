@@ -237,6 +237,7 @@ class Trainer:
     def evaluate_parallel(self, num_games=100, mcts_simulations=200, num_workers=4):
         from concurrent.futures import ProcessPoolExecutor, as_completed
         import torch
+        from tqdm import tqdm
         device_str = "cuda" if torch.cuda.is_available() else "cpu"
         print(f"[INFO] 评估进程将使用设备: {device_str}")
         games_per_worker = num_games // num_workers
@@ -248,8 +249,11 @@ class Trainer:
         total_wins = 0
         with ProcessPoolExecutor(max_workers=num_workers) as executor:
             futures = [executor.submit(self.evaluate_worker, model_state_dict, n, mcts_simulations, device_str) for n in tasks]
-            for future in as_completed(futures):
-                total_wins += future.result()
+            with tqdm(total=num_games, desc="多进程评估进度") as pbar:
+                for future in as_completed(futures):
+                    result = future.result()
+                    total_wins += result
+                    pbar.update(result)
         return total_wins / num_games
 
     def evaluate_full(self) -> float:
