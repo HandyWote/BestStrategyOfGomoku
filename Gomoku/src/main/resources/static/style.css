@@ -6,7 +6,7 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segui UI', 'Microsoft YaHei', sans-serif;
     background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
     min-height: 100vh;
     color: #333;
@@ -22,31 +22,7 @@ body {
     flex-direction: column;
 }
 
-/* 标题区域 */
-.header {
-    text-align: center;
-    margin-bottom: 30px;
-    background: white;
-    padding: 30px;
-    border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-}
-
-.header h1 {
-    font-size: 3rem;
-    font-weight: 700;
-    color: #2c3e50;
-    margin-bottom: 8px;
-    letter-spacing: 2px;
-}
-
-.subtitle {
-    font-size: 1rem;
-    color: #7f8c8d;
-    font-weight: 400;
-}
-
-/* 主要内容区域 */
+/* 主要内容区域 - 三栏布局 */
 .main-content {
     display: flex;
     gap: 30px;
@@ -56,7 +32,17 @@ body {
 
 /* 左侧控制面板 */
 .control-panel {
-    width: 320px;
+    width: 280px;
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    height: fit-content;
+}
+
+/* 右侧状态面板 */
+.status-panel {
+    width: 280px;
     background: white;
     border-radius: 16px;
     padding: 24px;
@@ -172,6 +158,17 @@ body {
     box-shadow: 0 4px 12px rgba(189, 195, 199, 0.3);
 }
 
+.btn-delete {
+    background: #e74c3c;
+    color: white;
+}
+
+.btn-delete:hover {
+    background: #c0392b;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+}
+
 /* 状态区域 */
 .status-section {
     margin-bottom: 30px;
@@ -247,7 +244,7 @@ body {
     gap: 12px;
 }
 
-/* 右侧棋盘区域 */
+/* 中间棋盘区域 */
 .board-area {
     flex: 1;
     display: flex;
@@ -257,6 +254,7 @@ body {
     border-radius: 16px;
     padding: 40px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    min-height: 600px;
 }
 
 .game-board {
@@ -358,9 +356,14 @@ body {
     height: 25px;
 }
 
-/* 消息区域 */
+/* 消息区域 - 改为右上角弹窗 */
 .message-area {
-    margin-top: 20px;
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    max-width: 400px;
+    pointer-events: none;
 }
 
 .message-box {
@@ -368,14 +371,19 @@ body {
     border-radius: 8px;
     font-size: 0.95rem;
     line-height: 1.4;
-    min-height: 20px;
+    margin-bottom: 10px;
     transition: all 0.3s ease;
+    pointer-events: auto;
+    opacity: 0;
+    transform: translateX(100%);
 }
 
 .message-box:not(:empty) {
     background: white;
     border-left: 4px solid #3498db;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    opacity: 1;
+    transform: translateX(0);
 }
 
 .message-box.success {
@@ -402,6 +410,29 @@ body {
     background-color: #fff3cd;
 }
 
+/* 添加关闭按钮样式 */
+.message-close {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.7;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.message-close:hover {
+    opacity: 1;
+}
+
 /* 页脚 */
 .footer {
     text-align: center;
@@ -421,7 +452,8 @@ body {
         align-items: center;
     }
 
-    .control-panel {
+    .control-panel,
+    .status-panel {
         width: 100%;
         max-width: 600px;
         margin-bottom: 20px;
@@ -449,11 +481,8 @@ body {
         padding: 10px;
     }
 
-    .header h1 {
-        font-size: 2rem;
-    }
-
-    .control-panel {
+    .control-panel,
+    .status-panel {
         padding: 20px;
     }
 
@@ -474,5 +503,13 @@ body {
     .button-group,
     .action-section {
         flex-direction: column;
+    }
+
+    /* 移动端调整消息弹窗 */
+    .message-area {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
     }
 }
