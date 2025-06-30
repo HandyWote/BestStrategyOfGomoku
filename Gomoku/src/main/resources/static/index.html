@@ -8,12 +8,6 @@
 </head>
 <body>
     <div class="container">
-        <!-- 标题区域 -->
-        <header class="header">
-            <h1>五子棋</h1>
-            <p class="subtitle">落子连五获胜</p>
-        </header>
-
         <div class="main-content">
             <!-- 左侧控制面板 -->
             <div class="control-panel">
@@ -33,6 +27,28 @@
                     </div>
                 </div>
 
+                <!-- 游戏控制按钮 -->
+                <div class="action-section">
+                    <button id="resetGame" class="btn btn-restart">
+                        <span>🔄</span>
+                        重新开始
+                    </button>
+                    <button id="deleteGame" class="btn btn-delete">
+                        <span>🗑️</span>
+                        删除棋局
+                    </button>
+                </div>
+            </div>
+
+            <!-- 中间棋盘区域 -->
+            <div class="board-area">
+                <div id="gameBoard" class="game-board">
+                    <!-- 棋盘将由JavaScript动态生成 -->
+                </div>
+            </div>
+
+            <!-- 右侧状态面板 -->
+            <div class="status-panel">
                 <!-- 游戏状态 -->
                 <div class="status-section">
                     <div class="status-item">
@@ -67,37 +83,18 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- 游戏控制按钮 -->
-                <div class="action-section">
-                    <button id="resetGame" class="btn btn-restart">
-                        <span>🔄</span>
-                        重新开始
-                    </button>
-                    <button id="deleteGame" class="btn btn-undo">
-                        <span>↶</span>
-                        悔棋
-                    </button>
-                </div>
             </div>
-
-            <!-- 右侧棋盘区域 -->
-            <div class="board-area">
-                <div id="gameBoard" class="game-board">
-                    <!-- 棋盘将由JavaScript动态生成 -->
-                </div>
-            </div>
-        </div>
-
-        <!-- 消息提示区域 -->
-        <div class="message-area">
-            <div id="messageBox" class="message-box"></div>
         </div>
 
         <!-- 页脚 -->
         <footer class="footer">
-            <p>© 2025 五子棋网页版 | 使用HTML, CSS和JavaScript构建</p>
+            <p>© 2025 五子棋网页版</p>
         </footer>
+    </div>
+
+    <!-- 右上角消息弹窗区域 -->
+    <div class="message-area">
+        <div id="messageBox" class="message-box"></div>
     </div>
 
     <script src="gomoku.js"></script>
