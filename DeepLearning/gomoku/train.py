@@ -10,11 +10,13 @@ from tqdm import tqdm
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Dict
+import os
+import shutil
 
 class Trainer:
     """Training pipeline for Gomoku AI"""
     
-    def __init__(self, model: GomokuNet, lr: float = 0.001, batch_size: int = 256):
+    def __init__(self, model: GomokuNet, lr: float = 0.001, batch_size: int = 256, opponent_model_path: str = None, model_dir: str = "models"):
         self.model = model
         # 自动检测GPU
         if torch.cuda.is_available():
@@ -28,70 +30,96 @@ class Trainer:
         self.mcts = MCTS(model)
         self.replay_buffer = deque(maxlen=50000)  # Store 50,000 games
         self.batch_size = batch_size
-        
-    def generate_self_play_games(self, model_state_dict, num_games):
+        self.model_dir = model_dir
+        os.makedirs(self.model_dir, exist_ok=True)
+        # 新增：对手模型
+        self.opponent_model = None
+        if opponent_model_path and os.path.exists(opponent_model_path):
+            self.opponent_model = GomokuNet(device=self.device)
+            self.opponent_model.load_state_dict(torch.load(opponent_model_path, map_location=self.device))
+            self.opponent_model.to(self.device)
+            print(f"[INFO] 加载上一代模型作为对手: {opponent_model_path}")
+        else:
+            print("[INFO] 未找到上一代模型，对手暂用当前模型。")
+            self.opponent_model = self.model
+        # 新增：记录最优胜率
+        self.best_win_rate = 0.0
+        self.best_model_path = os.path.join(self.model_dir, "best_model.pth")
+
+    def update_opponent(self, model_path: str):
+        self.opponent_model = GomokuNet(device=self.device)
+        self.opponent_model.load_state_dict(torch.load(model_path, map_location=self.device))
+        self.opponent_model.to(self.device)
+        print(f"[INFO] 更新对手模型: {model_path}")
+
+    def get_best_model_path(self):
+        return self.best_model_path
+
+    def generate_self_play_games(self, model_state_dict, opponent_state_dict, num_games):
         import torch
         from model import GomokuNet
         from mcts import MCTS
         from board import GomokuBoard
         import numpy as np
-        # 自动检测GPU
         if torch.cuda.is_available():
             device = torch.device("cuda")
-            print("[INFO] 自对弈进程检测到GPU，使用GPU。");
         else:
             device = torch.device("cpu")
-            print("[INFO] 自对弈进程未检测到GPU，使用CPU。");
         model = GomokuNet(device=device)
         model.load_state_dict(model_state_dict)
         mcts = MCTS(model)
+        opponent_model = GomokuNet(device=device)
+        opponent_model.load_state_dict(opponent_state_dict)
+        opponent_mcts = MCTS(opponent_model)
         games = []
-        print(f"[DEBUG] generate_self_play_games 启动, num_games={num_games}")
         for game_idx in range(num_games):
-            print(f"[DEBUG] 开始第{game_idx+1}局自对弈")
             board = GomokuBoard()
             game_history = []
             step = 0
+            # 轮流执黑白
+            if game_idx % 2 == 0:
+                black_mcts = mcts
+                white_mcts = opponent_mcts
+            else:
+                black_mcts = opponent_mcts
+                white_mcts = mcts
             while not board.winner:
-                print(f"[DEBUG] 第{game_idx+1}局, step={step}, 当前玩家: {board.current_player}")
-                action_probs = mcts.search(board)
+                if board.current_player == 1:
+                    action = black_mcts.get_move(board, temperature=1.0)
+                else:
+                    action = white_mcts.get_move(board, temperature=1.0)
+                row, col = action // 9, action % 9
+                action_probs = (black_mcts if board.current_player == 1 else white_mcts).search(board)
                 game_history.append({
                     'state': board.get_state(),
                     'policy': action_probs,
                     'player': board.current_player
                 })
-                action = mcts.get_move(board, temperature=1.0)
-                row, col = action // 9, action % 9
                 board.make_move(row, col)
                 step += 1
-            print(f"[DEBUG] 第{game_idx+1}局结束, 总步数: {step}")
             for sample in game_history:
                 sample['value'] = 1 if board.winner == sample['player'] else -1
             games.append(game_history)
-        print(f"[DEBUG] generate_self_play_games 结束, 共生成{len(games)}局")
         return games
 
     def self_play(self, num_games: int = 100) -> None:
         print(f"\n开始生成{num_games}局自对弈数据...")
-
-        num_workers = 1  # 只用单进程，避免多进程卡死
+        num_workers = 8  # 可根据显卡和CPU调整
         games_per_worker = num_games // num_workers
         remainder = num_games % num_workers
         tasks = [games_per_worker] * num_workers
         for i in range(remainder):
             tasks[i] += 1
-
-        # 保证参数在CPU
         model_state_dict = {k: v.cpu() for k, v in self.model.state_dict().items()}
+        opponent_state_dict = {k: v.cpu() for k, v in self.opponent_model.state_dict().items()}
         all_games = []
         with ProcessPoolExecutor(max_workers=num_workers) as executor:
-            futures = [executor.submit(self.generate_self_play_games, model_state_dict, n) for n in tasks]
+            futures = [executor.submit(self.generate_self_play_games, model_state_dict, opponent_state_dict, n) for n in tasks]
             with tqdm(total=num_games, desc="自对弈进度") as pbar:
                 for future in as_completed(futures):
                     result = future.result()
                     all_games.extend(result)
                     pbar.update(len(result))
-
         for game_idx, game_history in enumerate(all_games):
             print(f"\n对局 {game_idx + 1}, 步数 {len(game_history)}:")
             board = GomokuBoard()
@@ -101,7 +129,7 @@ class Trainer:
             board.display()
             for sample in game_history:
                 self.replay_buffer.append(sample)
-        
+
     def train_step(self) -> Dict[str, float]:
         """Perform one training step on a batch of samples"""
         if len(self.replay_buffer) < self.batch_size:
@@ -155,15 +183,15 @@ class Trainer:
             'value_loss': value_loss.item()
         }
         
-    def evaluate(self, num_games: int = 100) -> float:
-        """Evaluate current model against previous version"""
-        # For simplicity, we'll just evaluate against random moves
+    def evaluate(self, num_games: int, mcts_simulations: int) -> float:
+        """通用评估函数，可调对局数和MCTS模拟次数"""
+        eval_mcts = MCTS(self.model, num_simulations=mcts_simulations)
         wins = 0
-        for _ in tqdm(range(num_games), desc="评估进度"):
+        for _ in tqdm(range(num_games), desc=f"评估进度({num_games}局, MCTS={mcts_simulations})"):
             board = GomokuBoard()
             while not board.winner:
                 if board.current_player == 1:  # AI's turn
-                    action = self.mcts.get_move(board, temperature=0.1)
+                    action = eval_mcts.get_move(board, temperature=0.1)
                     row, col = action // 9, action % 9
                 else:  # Random opponent
                     valid_moves = board.get_valid_moves()
@@ -174,48 +202,57 @@ class Trainer:
             if board.winner == 1:
                 wins += 1
         return wins / num_games
-        
+
+    def evaluate_fast(self) -> float:
+        """快评估：10局，每步MCTS 20次，适合训练中快速监控"""
+        return self.evaluate(num_games=10, mcts_simulations=20)
+
+    def evaluate_full(self) -> float:
+        """全量评估：100局，每步MCTS 200次，适合最终模型实力评测"""
+        return self.evaluate(num_games=100, mcts_simulations=200)
+
     def train_iteration(self, num_self_play: int = 30, num_train_steps: int = 300) -> Dict[str, float]:
         """完成一次完整的训练迭代(自对弈+训练)"""
         # 生成自对弈数据
         self.self_play(num_self_play)
-        
         print("\n开始训练模型...")
         metrics = {'loss': [], 'policy_loss': [], 'value_loss': []}
-        
-        # 使用进度条显示训练过程
         with tqdm(range(num_train_steps), desc="训练进度") as pbar:
             for step in pbar:
                 step_metrics = self.train_step()
                 for k, v in step_metrics.items():
                     metrics[k].append(v)
-                
-                # 每100步显示一次训练指标
                 if step % 100 == 0:
                     pbar.set_postfix({
                         'loss': f"{np.mean(metrics['loss'][-100:]):.4f}",
                         'policy_loss': f"{np.mean(metrics['policy_loss'][-100:]):.4f}",
                         'value_loss': f"{np.mean(metrics['value_loss'][-100:]):.4f}"
                     })
-                    
-                    # 显示一个示例棋盘
                     sample = random.choice(self.replay_buffer)
                     board = GomokuBoard()
                     board.board = np.array(sample['state']['board'])
                     board.current_player = sample['state']['current_player']
                     print("\n示例棋盘状态:")
                     board.display()
-                    time.sleep(1)
-        
-        # 评估模型
-        print("\n评估模型表现...")
+        # 全量评估
+        print("\n全量评估模型表现...")
+        win_rate = self.evaluate_full()
         avg_metrics = {k: np.mean(v) for k, v in metrics.items()}
-        win_rate = self.evaluate()
         avg_metrics['win_rate'] = win_rate
-        
         print(f"\n训练完成! 平均损失: {avg_metrics['loss']:.4f}")
         print(f"策略损失: {avg_metrics['policy_loss']:.4f}")
         print(f"价值损失: {avg_metrics['value_loss']:.4f}")
-        print(f"对随机玩家的胜率: {win_rate:.2%}")
-        
+        print(f"全量评估胜率: {win_rate:.2%}")
+        # 保存模型，命名带战斗力（保留两位小数）
+        power_str = f"{win_rate:.2f}"
+        model_path = os.path.join(self.model_dir, f"model_power_{power_str}.pth")
+        torch.save(self.model.state_dict(), model_path)
+        print(f"[INFO] 已保存当前模型权重到 {model_path}")
+        # 若胜率更高，更新best_model.pth
+        if win_rate > self.best_win_rate:
+            self.best_win_rate = win_rate
+            shutil.copy(model_path, self.best_model_path)
+            print(f"[INFO] 当前模型为最优，已更新 {self.best_model_path}")
+        # 更新对手模型为本轮最新
+        self.update_opponent(self.best_model_path)
         return avg_metrics

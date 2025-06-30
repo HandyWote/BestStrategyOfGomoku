@@ -11,6 +11,14 @@ from train import Trainer
 
 def train_model(model_path=None):
     """训练五子棋AI模型"""
+    if model_path is None:
+        default_best = "models/best_model.pth"
+        if os.path.exists(default_best):
+            print(f"未指定模型，自动加载最优模型: {default_best}")
+            model_path = default_best
+        else:
+            print("未指定模型，也未找到最优模型，将从头训练。")
+            model_path = None
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = GomokuNet(device=device)
     if model_path and os.path.exists(model_path):
