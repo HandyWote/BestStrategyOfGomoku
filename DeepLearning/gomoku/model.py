@@ -49,6 +49,8 @@ class GomokuNet(nn.Module):
         
     def predict(self, board_state):
         """Predict policy and value for a single board state"""
+        # 保证模型在正确设备
+        self.to(self.device)
         # Convert board state to tensor
         board = torch.FloatTensor(board_state['board']).unsqueeze(0).unsqueeze(0).to(self.device)
         
