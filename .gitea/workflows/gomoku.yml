@@ -40,9 +40,8 @@ jobs:
           ```
           docker-compose up --build
           ```
-          - name: 新建 README.md
           EOF
-      - name: 上传所有 jar 包
+      - name: 上传构建产物
         uses: actions/upload-artifact@v3
         with:
           name: gomoku-jars
