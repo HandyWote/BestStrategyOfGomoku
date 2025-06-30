@@ -1,0 +1,8 @@
+version: '3'
+services:
+  gomoku:
+    build: .
+    image: gomoku:latest
+    ports:
+      - "10086:10086"
+    container_name: gomoku-app
