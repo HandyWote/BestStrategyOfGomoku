@@ -16,7 +16,13 @@ class Trainer:
     
     def __init__(self, model: GomokuNet, lr: float = 0.001, batch_size: int = 256):
         self.model = model
-        self.device = torch.device("cpu")
+        # 自动检测GPU
+        if torch.cuda.is_available():
+            self.device = torch.device("cuda")
+            print("[INFO] 检测到GPU，使用GPU进行训练。")
+        else:
+            self.device = torch.device("cpu")
+            print("[INFO] 未检测到GPU，使用CPU进行训练。")
         self.model.to(self.device)
         self.optimizer = optim.Adam(model.parameters(), lr=lr)
         self.mcts = MCTS(model)
@@ -29,7 +35,14 @@ class Trainer:
         from mcts import MCTS
         from board import GomokuBoard
         import numpy as np
-        model = GomokuNet(device=torch.device("cpu"))
+        # 自动检测GPU
+        if torch.cuda.is_available():
+            device = torch.device("cuda")
+            print("[INFO] 自对弈进程检测到GPU，使用GPU。");
+        else:
+            device = torch.device("cpu")
+            print("[INFO] 自对弈进程未检测到GPU，使用CPU。");
+        model = GomokuNet(device=device)
         model.load_state_dict(model_state_dict)
         mcts = MCTS(model)
         games = []
