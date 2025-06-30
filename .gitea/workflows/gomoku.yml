@@ -21,12 +21,14 @@ jobs:
         run: |
           cd Gomoku
           ./gradlew build --info --build-cache --parallel
-      - name: 上传所有 jar 包
-        uses: actions/upload-artifact@v3
-        with:
-          name: gomoku-jars
-          path: Gomoku/build/libs/*.jar
+#      - name: 上传所有 jar 包
+#        uses: actions/upload-artifact@v3
+#        with:
+#          name: gomoku-jars
+#          path: Gomoku/build/libs/*.jar
 
+      - name: 安装 Docker
+        uses: docker/setup-buildx-action@v3
       - name: 构建 Docker 镜像
         run: |
           cd Gomoku
