@@ -24,6 +24,11 @@ class GomokuGame {
         this.bindEvents();
         this.createBoard();
         this.showMessage('欢迎来到五子棋游戏！选择棋盘大小后点击"创建游戏"开始新游戏。', 'info');
+
+        // 添加窗口大小变化监听器
+        window.addEventListener('resize', () => {
+            this.createBoard();
+        });
     }
 
     /**
@@ -71,22 +76,102 @@ class GomokuGame {
     }
 
     /**
-     * 创建棋盘DOM：生成网格线和交点按钮
+     * 获取可用的棋盘容器尺寸
+     */
+    getAvailableBoardSize() {
+        const boardArea = document.querySelector('.board-area');
+        const boardContainer = document.getElementById('gameBoard');
+
+        // 获取容器的实际可用空间
+        const containerRect = boardArea.getBoundingClientRect();
+        const containerPadding = 80; // board-area的padding (40px * 2)
+        const boardPadding = 48; // game-board的padding (24px * 2)
+
+        // 计算可用空间
+        const availableWidth = containerRect.width - containerPadding - boardPadding;
+        const availableHeight = Math.min(containerRect.height - containerPadding - boardPadding, availableWidth);
+
+        // 在移动设备上，还需要考虑视口限制
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+
+        let maxBoardSize;
+
+        if (viewportWidth <= 768) {
+            // 移动设备：使用较小的尺寸，留出更多边距
+            maxBoardSize = Math.min(availableWidth, viewportWidth * 0.85, viewportHeight * 0.6);
+        } else {
+            // 桌面设备：使用容器可用空间
+            maxBoardSize = Math.min(availableWidth, availableHeight, 600); // 最大600px
+        }
+
+        return Math.max(200, maxBoardSize); // 最小200px
+    }
+
+    /**
+     * 根据可用空间和棋盘大小计算最适合的单元格尺寸
+     */
+    getResponsiveCellSize() {
+        const availableSize = this.getAvailableBoardSize();
+
+        // 计算单元格大小：可用空间除以棋盘格数减1（因为是交点数）
+        const calculatedCellSize = availableSize / (this.boardSize - 1);
+
+        // 设置合理的单元格大小范围
+        const minCellSize = 15;
+        const maxCellSize = 50;
+
+        let cellSize = Math.max(minCellSize, Math.min(maxCellSize, calculatedCellSize));
+
+        // 在移动设备上进一步限制尺寸
+        if (window.innerWidth <= 768) {
+            cellSize = Math.min(cellSize, 30);
+        }
+
+        return Math.floor(cellSize);
+    }
+
+    /**
+     * 根据单元格尺寸计算按钮尺寸
+     */
+    getResponsiveCellButtonSize(cellSize) {
+        // 按钮尺寸通常是单元格尺寸的80%
+        const buttonSize = Math.floor(cellSize * 0.8);
+        return Math.max(12, Math.min(40, buttonSize));
+    }
+
+    /**
+     * 根据单元格尺寸计算棋子尺寸
+     */
+    getResponsivePieceSize(cellSize) {
+        // 棋子尺寸通常是单元格尺寸的70%
+        const pieceSize = Math.floor(cellSize * 0.7);
+        return Math.max(10, Math.min(35, pieceSize));
+    }
+
+    /**
+     * 创建棋盘DOM：生成网格线和交点按钮（响应式版本）
      */
     createBoard() {
         const boardContainer = document.getElementById('gameBoard');
         boardContainer.innerHTML = '';
 
         const grid = document.createElement('div');
-        grid.className = 'board-grid';
+        grid.className = 'board-grid responsive';
 
-        // 根据棋盘大小添加相应的CSS类
-        boardContainer.className = 'game-board ' + this.getBoardSizeClass();
+        // 使用响应式计算的尺寸
+        const cellSize = this.getResponsiveCellSize();
+        const buttonSize = this.getResponsiveCellButtonSize(cellSize);
+        const pieceSize = this.getResponsivePieceSize(cellSize);
 
-        // 计算棋盘总尺寸 - 回退修正：网格数量比交点少1
-        const cellSize = this.getCellSize();
+        // 计算棋盘总尺寸
         const boardWidth = (this.boardSize - 1) * cellSize;
         const boardHeight = (this.boardSize - 1) * cellSize;
+
+        // 设置CSS变量，用于网格线和其他样式
+        grid.style.setProperty('--cell-size', cellSize + 'px');
+        grid.style.setProperty('--button-size', buttonSize + 'px');
+        grid.style.setProperty('--piece-size', pieceSize + 'px');
 
         grid.style.width = boardWidth + 'px';
         grid.style.height = boardHeight + 'px';
@@ -95,16 +180,18 @@ class GomokuGame {
         for (let i = 0; i < this.boardSize; i++) {
             for (let j = 0; j < this.boardSize; j++) {
                 const cell = document.createElement('button');
-                cell.className = 'cell';
+                cell.className = 'cell responsive';
                 cell.dataset.row = i.toString();
                 cell.dataset.col = j.toString();
 
                 // 计算交点位置
-                const x = j * cellSize - this.getCellButtonSize() / 2;
-                const y = i * cellSize - this.getCellButtonSize() / 2;
+                const x = j * cellSize - buttonSize / 2;
+                const y = i * cellSize - buttonSize / 2;
 
                 cell.style.left = x + 'px';
                 cell.style.top = y + 'px';
+                cell.style.width = buttonSize + 'px';
+                cell.style.height = buttonSize + 'px';
 
                 cell.addEventListener('click', () => this.makeMove(i, j));
                 grid.appendChild(cell);
@@ -112,50 +199,10 @@ class GomokuGame {
         }
 
         boardContainer.appendChild(grid);
-    }
 
-    /**
-     * 根据棋盘大小类别获取单元格尺寸
-     */
-    getCellSize() {
-        if (this.boardSize <= 9) {
-            return 40; // board-small
-        } else if (this.boardSize <= 15) {
-            return 35; // board-medium
-        } else if (this.boardSize <= 19) {
-            return 30; // board-large
-        } else {
-            return 25; // board-xlarge
-        }
-    }
-
-    /**
-     * 根据棋盘大小类别获取交点按钮尺寸
-     */
-    getCellButtonSize() {
-        if (this.boardSize <= 9) {
-            return 32; // board-small
-        } else if (this.boardSize <= 15) {
-            return 28; // board-medium
-        } else if (this.boardSize <= 19) {
-            return 24; // board-large
-        } else {
-            return 20; // board-xlarge
-        }
-    }
-
-    /**
-     * 根据 boardSize 返回对应CSS类，控制单元格大小
-     */
-    getBoardSizeClass() {
-        if (this.boardSize <= 9) {
-            return 'board-small';
-        } else if (this.boardSize <= 15) {
-            return 'board-medium';
-        } else if (this.boardSize <= 19) {
-            return 'board-large';
-        } else {
-            return 'board-xlarge';
+        // 如果有游戏数据，重新渲染棋子
+        if (this.gameBoard && this.gameBoard.length > 0) {
+            this.updateBoard();
         }
     }
 
@@ -272,10 +319,11 @@ class GomokuGame {
     }
 
     /**
-     * 更新棋盘显示：根据 this.gameBoard 渲染棋子
+     * 更新棋盘显示：根据 this.gameBoard 渲染棋子（响应式版本）
      */
     updateBoard() {
         const cells = document.querySelectorAll('.cell');
+        const pieceSize = this.getResponsivePieceSize(this.getResponsiveCellSize());
 
         cells.forEach(cell => {
             const row = parseInt(cell.dataset.row);
@@ -290,7 +338,9 @@ class GomokuGame {
             // 根据棋盘状态添加棋子
             if (this.gameBoard[row] && this.gameBoard[row][col] !== 0) {
                 const piece = document.createElement('div');
-                piece.className = `piece ${this.gameBoard[row][col] === 1 ? 'black' : 'white'}`;
+                piece.className = `piece ${this.gameBoard[row][col] === 1 ? 'black' : 'white'} responsive`;
+                piece.style.width = pieceSize + 'px';
+                piece.style.height = pieceSize + 'px';
                 cell.appendChild(piece);
                 cell.classList.add('disabled');
             } else {
