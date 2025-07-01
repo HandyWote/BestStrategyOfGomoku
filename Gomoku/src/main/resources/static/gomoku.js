@@ -71,7 +71,7 @@ class GomokuGame {
     }
 
     /**
-     * 创建棋盘DOM：生成 grid 容器和多个 cell 按钮
+     * 创建棋盘DOM：生成网格线和交点按钮
      */
     createBoard() {
         const boardContainer = document.getElementById('gameBoard');
@@ -79,23 +79,69 @@ class GomokuGame {
 
         const grid = document.createElement('div');
         grid.className = 'board-grid';
-        grid.style.gridTemplateColumns = `repeat(${this.boardSize}, 1fr)`;
 
         // 根据棋盘大小添加相应的CSS类
         boardContainer.className = 'game-board ' + this.getBoardSizeClass();
 
+        // 计算棋盘总尺寸 - 回退修正：网格数量比交点少1
+        const cellSize = this.getCellSize();
+        const boardWidth = (this.boardSize - 1) * cellSize;
+        const boardHeight = (this.boardSize - 1) * cellSize;
+
+        grid.style.width = boardWidth + 'px';
+        grid.style.height = boardHeight + 'px';
+
+        // 创建交点按钮
         for (let i = 0; i < this.boardSize; i++) {
             for (let j = 0; j < this.boardSize; j++) {
                 const cell = document.createElement('button');
                 cell.className = 'cell';
                 cell.dataset.row = i.toString();
                 cell.dataset.col = j.toString();
+
+                // 计算交点位置
+                const x = j * cellSize - this.getCellButtonSize() / 2;
+                const y = i * cellSize - this.getCellButtonSize() / 2;
+
+                cell.style.left = x + 'px';
+                cell.style.top = y + 'px';
+
                 cell.addEventListener('click', () => this.makeMove(i, j));
                 grid.appendChild(cell);
             }
         }
 
         boardContainer.appendChild(grid);
+    }
+
+    /**
+     * 根据棋盘大小类别获取单元格尺寸
+     */
+    getCellSize() {
+        if (this.boardSize <= 9) {
+            return 40; // board-small
+        } else if (this.boardSize <= 15) {
+            return 35; // board-medium
+        } else if (this.boardSize <= 19) {
+            return 30; // board-large
+        } else {
+            return 25; // board-xlarge
+        }
+    }
+
+    /**
+     * 根据棋盘大小类别获取交点按钮尺寸
+     */
+    getCellButtonSize() {
+        if (this.boardSize <= 9) {
+            return 32; // board-small
+        } else if (this.boardSize <= 15) {
+            return 28; // board-medium
+        } else if (this.boardSize <= 19) {
+            return 24; // board-large
+        } else {
+            return 20; // board-xlarge
+        }
     }
 
     /**
