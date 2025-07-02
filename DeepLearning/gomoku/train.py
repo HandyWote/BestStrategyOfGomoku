@@ -13,6 +13,11 @@ from typing import Dict
 import os
 import shutil
 
+class RandomPlayer:
+    def get_move(self, board):
+        valid_moves = list(zip(*np.where(board == 0)))
+        return random.choice(valid_moves)
+
 class Trainer:
     """Training pipeline for Gomoku AI"""
     
@@ -183,88 +188,9 @@ class Trainer:
             'value_loss': value_loss.item()
         }
         
-    def evaluate(self, num_games: int, mcts_simulations: int) -> float:
-        """通用评估函数，可调对局数和MCTS模拟次数"""
-        eval_mcts = MCTS(self.model, num_simulations=mcts_simulations)
-        wins = 0
-        for _ in tqdm(range(num_games), desc=f"评估进度({num_games}局, MCTS={mcts_simulations})"):
-            board = GomokuBoard()
-            while not board.winner:
-                if board.current_player == 1:  # AI's turn
-                    action = eval_mcts.get_move(board, temperature=0.1)
-                    row, col = action // 9, action % 9
-                else:  # Random opponent
-                    valid_moves = board.get_valid_moves()
-                    if not valid_moves:
-                        break
-                    row, col = random.choice(valid_moves)
-                board.make_move(row, col)
-            if board.winner == 1:
-                wins += 1
-        return wins / num_games
-
-    def evaluate_fast(self) -> float:
-        """快评估：10局，每步MCTS 20次，适合训练中快速监控"""
-        return self.evaluate(num_games=10, mcts_simulations=20)
-
-    def evaluate_worker(self, model_state_dict, num_games, mcts_simulations, device_str):
-        import torch
-        from model import GomokuNet
-        from mcts import MCTS
-        from board import GomokuBoard
-        import numpy as np
-        device = torch.device(device_str)
-        model = GomokuNet(device=device)
-        model.load_state_dict(model_state_dict)
-        eval_mcts = MCTS(model, num_simulations=mcts_simulations)
-        wins = 0
-        for _ in range(num_games):
-            board = GomokuBoard()
-            while not board.winner:
-                if board.current_player == 1:  # AI's turn
-                    action = eval_mcts.get_move(board, temperature=0.1)
-                    row, col = action // 9, action % 9
-                else:  # Random opponent
-                    valid_moves = board.get_valid_moves()
-                    if not valid_moves:
-                        break
-                    row, col = random.choice(valid_moves)
-                board.make_move(row, col)
-            if board.winner == 1:
-                wins += 1
-        return wins
-
-    def evaluate_parallel(self, num_games=100, mcts_simulations=200, num_workers=4):
-        from concurrent.futures import ProcessPoolExecutor, as_completed
-        import torch
-        from tqdm import tqdm
-        device_str = "cuda" if torch.cuda.is_available() else "cpu"
-        print(f"[INFO] 评估进程将使用设备: {device_str}")
-        games_per_worker = num_games // num_workers
-        remainder = num_games % num_workers
-        tasks = [games_per_worker] * num_workers
-        for i in range(remainder):
-            tasks[i] += 1
-        model_state_dict = {k: v.cpu() for k, v in self.model.state_dict().items()}
-        total_wins = 0
-        with ProcessPoolExecutor(max_workers=num_workers) as executor:
-            futures = [executor.submit(self.evaluate_worker, model_state_dict, n, mcts_simulations, device_str) for n in tasks]
-            with tqdm(total=num_games, desc="多进程评估进度") as pbar:
-                for future in as_completed(futures):
-                    result = future.result()
-                    total_wins += result
-                    pbar.update(result)
-        return total_wins / num_games
-
-    def evaluate_full(self) -> float:
-        """全量评估：100局，每步MCTS 200次，适合最终模型实力评测（多进程加速）"""
-        print("[INFO] 使用多进程并发评估...")
-        return self.evaluate_parallel(num_games=100, mcts_simulations=200, num_workers=4)
-
     def train_iteration(self, num_self_play: int = 30, num_train_steps: int = 300) -> Dict[str, float]:
-        """完成一次完整的训练迭代(自对弈+训练)"""
-        # 生成自对弈数据
-        self.self_play(num_self_play)
+        """完成一次完整的训练迭代(全部与MinimaxAI对弈+训练)"""
+        self.self_play_minimax(num_self_play)
         print("\n开始训练模型...")
         metrics = {'loss': [], 'policy_loss': [], 'value_loss': []}
         with tqdm(range(num_train_steps), desc="训练进度") as pbar:
@@ -284,25 +210,374 @@ class Trainer:
                     board.current_player = sample['state']['current_player']
                     print("\n示例棋盘状态:")
                     board.display()
-        # 全量评估
-        print("\n全量评估模型表现...")
-        win_rate = self.evaluate_full()
+        # 智能分级评估与模型保存
+        print("\n智能分级评估与模型保存...")
+        self.save_by_smart_evaluate()
         avg_metrics = {k: np.mean(v) for k, v in metrics.items()}
-        avg_metrics['win_rate'] = win_rate
         print(f"\n训练完成! 平均损失: {avg_metrics['loss']:.4f}")
         print(f"策略损失: {avg_metrics['policy_loss']:.4f}")
         print(f"价值损失: {avg_metrics['value_loss']:.4f}")
-        print(f"全量评估胜率: {win_rate:.2%}")
-        # 保存模型，命名带战斗力（保留两位小数）
-        power_str = f"{win_rate:.2f}"
-        model_path = os.path.join(self.model_dir, f"model_power_{power_str}.pth")
-        torch.save(self.model.state_dict(), model_path)
-        print(f"[INFO] 已保存当前模型权重到 {model_path}")
-        # 若胜率更高，更新best_model.pth
-        if win_rate > self.best_win_rate:
-            self.best_win_rate = win_rate
-            shutil.copy(model_path, self.best_model_path)
-            print(f"[INFO] 当前模型为最优，已更新 {self.best_model_path}")
-        # 更新对手模型为本轮最新
-        self.update_opponent(self.best_model_path)
         return avg_metrics
+
+    def generate_self_play_games_minimax(self, model_state_dict, num_games, mcts_first=True):
+        from model import GomokuNet
+        from mcts import MCTS
+        from board import GomokuBoard
+        import torch
+        minimax_ai = MinimaxAI(depth=2)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model = GomokuNet(device=device)
+        model.load_state_dict(model_state_dict)
+        mcts = MCTS(model)
+        games = []
+        for game_idx in range(num_games):
+            board = GomokuBoard()
+            game_history = []
+            step = 0
+            # mcts_first=True: 当前模型执黑，minimax执白；否则反之
+            if mcts_first:
+                black_is_mcts = True
+            else:
+                black_is_mcts = False
+            while not board.winner:
+                if (board.current_player == 1 and black_is_mcts) or (board.current_player == -1 and not black_is_mcts):
+                    # 当前模型走
+                    action = mcts.get_move(board, temperature=1.0)
+                    row, col = action // 9, action % 9
+                else:
+                    # MinimaxAI走
+                    row, col = minimax_ai.get_move(board.board)
+                board.make_move(row, col)
+                step += 1
+                # 记录数据
+                action_probs = mcts.search(board) if ((board.current_player == -1 and black_is_mcts) or (board.current_player == 1 and not black_is_mcts)) else None
+                game_history.append({
+                    'state': board.get_state(),
+                    'policy': action_probs if action_probs is not None else {},
+                    'player': board.current_player
+                })
+            for sample in game_history:
+                sample['value'] = 1 if board.winner == sample['player'] else -1
+            games.append(game_history)
+        return games
+
+    def self_play_minimax(self, num_games: int = 100) -> None:
+        print(f"\n开始生成{num_games}局与MinimaxAI自对弈数据...")
+        num_workers = 4
+        games_per_worker = num_games // num_workers
+        remainder = num_games % num_workers
+        tasks = [games_per_worker] * num_workers
+        for i in range(remainder):
+            tasks[i] += 1
+        model_state_dict = {k: v.cpu() for k, v in self.model.state_dict().items()}
+        all_games = []
+        from concurrent.futures import ProcessPoolExecutor, as_completed
+        from tqdm import tqdm
+        with ProcessPoolExecutor(max_workers=num_workers) as executor:
+            futures = [executor.submit(self.generate_self_play_games_minimax, model_state_dict, n, mcts_first=(i%2==0)) for i, n in enumerate(tasks)]
+            with tqdm(total=num_games, desc="Minimax自对弈进度") as pbar:
+                for future in as_completed(futures):
+                    result = future.result()
+                    all_games.extend(result)
+                    pbar.update(len(result))
+        for game_idx, game_history in enumerate(all_games):
+            print(f"\n对局 {game_idx + 1}, 步数 {len(game_history)}:")
+            board = GomokuBoard()
+            for move in game_history:
+                board.board = np.array(move['state']['board'])
+                board.current_player = move['state']['current_player']
+            board.display()
+            for sample in game_history:
+                self.replay_buffer.append(sample)
+
+    def load_model_player(self, model_path):
+        # 加载历史模型作为对手
+        if not os.path.exists(model_path):
+            print(f"[WARN] 历史模型文件不存在: {model_path}，跳过该对手。")
+            return None
+        model = GomokuNet(device=self.device)
+        model.load_state_dict(torch.load(model_path, map_location=self.device))
+        model.eval()
+        class ModelPlayer:
+            def get_move(self, board):
+                mcts = MCTS(model, num_simulations=50)
+                action = mcts.get_move(board, temperature=0.1)
+                row, col = action // 9, action % 9
+                return (row, col)
+        return ModelPlayer()
+
+    def play_one_game(self, model, opponent):
+        # AI执黑，对手执白
+        board = GomokuBoard()
+        mcts = MCTS(model, num_simulations=50)
+        while not board.winner:
+            if board.current_player == 1:
+                action = mcts.get_move(board, temperature=0.1)
+                row, col = action // 9, action % 9
+            else:
+                row, col = opponent.get_move(board.board)
+            board.make_move(row, col)
+        return board.winner
+
+    def smart_evaluate(self, games_per_level=30, win_threshold=0.6):
+        """
+        智能分级评估：AI依次挑战不同难度对手，胜率达标才晋级
+        返回：(最高通过等级index, 等级名, 胜率, [(等级名, 胜率)])
+        """
+        levels = [
+            ("随机玩家", RandomPlayer()),
+            ("历史弱模型", self.load_model_player(os.path.join(self.model_dir, "model_power_0.00.pth"))),
+            ("历史中等模型", self.load_model_player(os.path.join(self.model_dir, "model_power_0.50.pth"))),
+            ("MinimaxAI-2", MinimaxAI(depth=2)),
+            ("MinimaxAI-4", MinimaxAI(depth=4)),
+            ("当前最优模型", self.load_model_player(self.best_model_path)),
+        ]
+        results = []
+        max_level = -1
+        max_level_name = ""
+        max_win_rate = 0.0
+        for idx, (level_name, opponent) in enumerate(levels):
+            if opponent is None:
+                print(f"[WARN] 跳过对手：{level_name}（模型文件不存在）")
+                continue
+            print(f"\n[评估] 挑战对手：{level_name}")
+            wins = 0
+            for _ in range(games_per_level):
+                winner = self.play_one_game(self.model, opponent)
+                if winner == 1:
+                    wins += 1
+            win_rate = wins / games_per_level
+            print(f"胜率：{win_rate:.2%}")
+            results.append((level_name, win_rate))
+            if win_rate >= win_threshold:
+                max_level = idx
+                max_level_name = level_name
+                max_win_rate = win_rate
+            else:
+                print(f"未通过{level_name}，评估终止。")
+                break
+        print("\n智能分级评估结果：")
+        for level_name, win_rate in results:
+            print(f"{level_name}：胜率 {win_rate:.2%}")
+        return max_level, max_level_name, max_win_rate, results
+
+    def save_by_smart_evaluate(self, games_per_level=30, win_threshold=0.6):
+        """
+        智能评估后，按等级和胜率命名模型，最高等级最高胜率命名为best_model.pth
+        """
+        max_level, max_level_name, max_win_rate, results = self.smart_evaluate(games_per_level, win_threshold)
+        # 命名规则：model_level{等级index}_{胜率}.pth
+        if max_level >= 0:
+            model_name = f"model_level{max_level+1}_{max_win_rate:.2f}.pth"
+            model_path = os.path.join(self.model_dir, model_name)
+            torch.save(self.model.state_dict(), model_path)
+            print(f"[INFO] 已保存当前模型权重到 {model_path}")
+            # 若为最高等级且胜率最高，更新best_model.pth
+            best_model_path = os.path.join(self.model_dir, "best_model.pth")
+            shutil.copy(model_path, best_model_path)
+            print(f"[INFO] 当前模型为最优，已更新 {best_model_path}")
+        else:
+            print("[WARN] 没有通过任何等级，未保存为best_model")
+        # 也可保留每一级的评估结果
+        for idx, (level_name, win_rate) in enumerate(results):
+            level_model_name = f"model_level{idx+1}_{win_rate:.2f}.pth"
+            level_model_path = os.path.join(self.model_dir, level_model_name)
+            torch.save(self.model.state_dict(), level_model_path)
+            print(f"[INFO] 备份：{level_model_path}")
+        return max_level, max_level_name, max_win_rate
+
+# MinimaxAI集成
+class MinimaxAI:
+    def __init__(self, depth=2):
+        self.depth = depth
+        self.BOARD_SIZE = 9
+        self.EMPTY = 0
+        self.BLACK = 1
+        self.WHITE = -1
+        self.pattern_scores = {
+            "FIVE": 100000,
+            "FOUR": 10000,
+            "BLOCKED_FOUR": 1000,
+            "THREE": 1000,
+            "BLOCKED_THREE": 100,
+            "TWO": 100,
+            "BLOCKED_TWO": 10,
+            "ONE": 10,
+            "BLOCKED_ONE": 1
+        }
+    def get_move(self, board):
+        _, move = self.minimax(board.copy(), self.depth, -float('inf'), float('inf'), True)
+        return move
+    def minimax(self, board, depth, alpha, beta, maximizing_player):
+        if depth == 0 or self.is_game_over(board):
+            return self.evaluate(board), None
+        if maximizing_player:
+            max_eval = -float('inf')
+            best_move = None
+            for move in self.get_possible_moves(board):
+                row, col = move
+                board[row, col] = self.WHITE
+                eval, _ = self.minimax(board, depth-1, alpha, beta, False)
+                board[row, col] = self.EMPTY
+                if eval > max_eval:
+                    max_eval = eval
+                    best_move = move
+                alpha = max(alpha, eval)
+                if beta <= alpha:
+                    break
+            return max_eval, best_move
+        else:
+            min_eval = float('inf')
+            best_move = None
+            for move in self.get_possible_moves(board):
+                row, col = move
+                board[row, col] = self.BLACK
+                eval, _ = self.minimax(board, depth-1, alpha, beta, True)
+                board[row, col] = self.EMPTY
+                if eval < min_eval:
+                    min_eval = eval
+                    best_move = move
+                beta = min(beta, eval)
+                if beta <= alpha:
+                    break
+            return min_eval, best_move
+    def get_possible_moves(self, board):
+        empty_positions = list(zip(*np.where(board == self.EMPTY)))
+        return empty_positions
+    def is_game_over(self, board):
+        for row in range(self.BOARD_SIZE):
+            for col in range(self.BOARD_SIZE):
+                if board[row, col] != self.EMPTY and self.check_win(board, row, col):
+                    return True
+        return np.all(board != self.EMPTY)
+    def evaluate(self, board):
+        score = 0
+        for row in range(self.BOARD_SIZE):
+            for col in range(self.BOARD_SIZE):
+                if board[row, col] == self.WHITE:
+                    score += self.evaluate_position(board, row, col, self.WHITE)
+                elif board[row, col] == self.BLACK:
+                    score -= self.evaluate_position(board, row, col, self.BLACK)
+        return score
+    def evaluate_position(self, board, row, col, player):
+        directions = [
+            [(0, 1), (0, -1)],
+            [(1, 0), (-1, 0)],
+            [(1, 1), (-1, -1)],
+            [(1, -1), (-1, 1)]
+        ]
+        total_score = 0
+        for axis in directions:
+            line = [player]
+            r, c = row + axis[0][0], col + axis[0][1]
+            while 0 <= r < self.BOARD_SIZE and 0 <= c < self.BOARD_SIZE:
+                line.append(board[r, c])
+                r += axis[0][0]
+                c += axis[0][1]
+            r, c = row + axis[1][0], col + axis[1][1]
+            while 0 <= r < self.BOARD_SIZE and 0 <= c < self.BOARD_SIZE:
+                line.insert(0, board[r, c])
+                r += axis[1][0]
+                c += axis[1][1]
+            total_score += self.analyze_line(line, player)
+        return total_score
+    def analyze_line(self, line, player):
+        score = 0
+        count = 0
+        block = 0
+        empty = 0
+        for i in range(len(line)):
+            if line[i] == player:
+                count += 1
+            elif line[i] == self.EMPTY:
+                if count > 0:
+                    empty += 1
+                    block = 0
+                else:
+                    block = 0
+                    empty = 1
+            else:
+                if count > 0:
+                    block += 1
+                    score += self.get_pattern_score(count, block, empty)
+                    count = 0
+                    block = 1
+                    empty = 0
+                else:
+                    block = 1
+                    empty = 0
+        if count > 0:
+            score += self.get_pattern_score(count, block, empty)
+        return score
+    def get_pattern_score(self, count, block, empty):
+        if empty == 0:
+            if count >= 5:
+                return self.pattern_scores["FIVE"]
+            if block == 0:
+                if count == 4:
+                    return self.pattern_scores["FOUR"]
+                elif count == 3:
+                    return self.pattern_scores["THREE"]
+                elif count == 2:
+                    return self.pattern_scores["TWO"]
+                elif count == 1:
+                    return self.pattern_scores["ONE"]
+            elif block == 1:
+                if count == 4:
+                    return self.pattern_scores["BLOCKED_FOUR"]
+                elif count == 3:
+                    return self.pattern_scores["BLOCKED_THREE"]
+                elif count == 2:
+                    return self.pattern_scores["BLOCKED_TWO"]
+                elif count == 1:
+                    return self.pattern_scores["BLOCKED_ONE"]
+        elif empty == 1 or empty == count - 1:
+            if count >= 5:
+                return self.pattern_scores["FIVE"]
+            if block == 0:
+                if count == 4:
+                    return self.pattern_scores["FOUR"]
+                elif count == 3:
+                    return self.pattern_scores["THREE"]
+                elif count == 2:
+                    return self.pattern_scores["TWO"]
+            elif block == 1:
+                if count == 4:
+                    return self.pattern_scores["BLOCKED_FOUR"]
+                elif count == 3:
+                    return self.pattern_scores["BLOCKED_THREE"]
+                elif count == 2:
+                    return self.pattern_scores["BLOCKED_TWO"]
+        elif empty == 2 or empty == count - 2:
+            if count >= 5:
+                return self.pattern_scores["FIVE"]
+            if block == 0:
+                if count == 4:
+                    return self.pattern_scores["FOUR"]
+                elif count == 3:
+                    return self.pattern_scores["THREE"]
+            elif block == 1:
+                if count == 4:
+                    return self.pattern_scores["BLOCKED_FOUR"]
+                elif count == 3:
+                    return self.pattern_scores["BLOCKED_THREE"]
+        return 0
+    def check_win(self, board, row, col):
+        directions = [
+            [(0, 1), (0, -1)],
+            [(1, 0), (-1, 0)],
+            [(1, 1), (-1, -1)],
+            [(1, -1), (-1, 1)]
+        ]
+        player = board[row, col]
+        for axis in directions:
+            count = 1
+            for (dr, dc) in axis:
+                r, c = row + dr, col + dc
+                while 0 <= r < self.BOARD_SIZE and 0 <= c < self.BOARD_SIZE and board[r, c] == player:
+                    count += 1
+                    r += dr
+                    c += dc
+            if count >= 5:
+                return True
+        return False
