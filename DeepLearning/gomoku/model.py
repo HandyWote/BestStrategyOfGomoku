@@ -7,10 +7,7 @@ class GomokuNet(nn.Module):
     
     def __init__(self, device=None):
         super().__init__()
-        if device is None:
-            self.device = torch.device("cpu")
-        else:
-            self.device = device
+        self.device = device if device is not None else torch.device("cpu")
         self.to(self.device)
         
         # Shared convolutional layers
@@ -49,10 +46,9 @@ class GomokuNet(nn.Module):
         
     def predict(self, board_state):
         """Predict policy and value for a single board state"""
-        # 保证模型在正确设备
-        self.to(self.device)
+        self.eval()
         # Convert board state to tensor
-        board = torch.FloatTensor(board_state['board']).unsqueeze(0).unsqueeze(0).to(self.device)
+        board = torch.FloatTensor(board_state['board']).unsqueeze(0).unsqueeze(0)
         
         # Normalize for current player
         if board_state['current_player'] == -1:
