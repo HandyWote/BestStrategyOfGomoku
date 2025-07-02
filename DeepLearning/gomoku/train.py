@@ -21,15 +21,12 @@ class RandomPlayer:
 class Trainer:
     """Training pipeline for Gomoku AI"""
     
-    def __init__(self, model: GomokuNet, lr: float = 0.001, batch_size: int = 256, opponent_model_path: str = None, model_dir: str = "models"):
+    def __init__(self, model: GomokuNet, lr: float = 0.001, batch_size: int = 256, opponent_model_path: str = None, model_dir: str = "models", device=None):
         self.model = model
-        # 自动检测GPU
-        if torch.cuda.is_available():
-            self.device = torch.device("cuda")
-            print("[INFO] 检测到GPU，使用GPU进行训练。")
+        if device is not None:
+            self.device = device
         else:
-            self.device = torch.device("cpu")
-            print("[INFO] 未检测到GPU，使用CPU进行训练。")
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
         self.optimizer = optim.Adam(model.parameters(), lr=lr)
         self.mcts = MCTS(model)
