@@ -152,19 +152,6 @@ body {
     box-shadow: 0 4px 12px rgba(230, 126, 34, 0.3);
 }
 
-.btn-undo {
-    background: #ecf0f1;
-    color: #7f8c8d;
-    border: 2px solid #bdc3c7;
-}
-
-.btn-undo:hover {
-    background: #bdc3c7;
-    color: #2c3e50;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(189, 195, 199, 0.3);
-}
-
 .btn-delete {
     background: #e74c3c;
     color: white;
@@ -262,7 +249,6 @@ body {
     padding: 40px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     min-height: 600px;
-    /* 确保在小屏幕上也有足够空间 */
     max-width: 100%;
     overflow: hidden;
 }
@@ -273,7 +259,6 @@ body {
     padding: 24px;
     box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
     position: relative;
-    /* 确保棋盘容器不会超出父容器 */
     max-width: 100%;
     max-height: 100%;
     display: flex;
@@ -287,7 +272,7 @@ body {
     background: #deb887;
 }
 
-/* 网格线样式 - 统一的样式应用于所有网格 */
+/* 网格线样式 */
 .board-grid::before {
     content: '';
     position: absolute;
@@ -363,64 +348,7 @@ body {
     border: 1px solid #ccc;
 }
 
-/* 动态调整交点和棋子大小 - 保留作为后备方案 */
-.board-small {
-    --cell-size: 40px;
-}
-
-.board-small .cell {
-    width: 32px;
-    height: 32px;
-}
-
-.board-small .piece {
-    width: 28px;
-    height: 28px;
-}
-
-.board-medium {
-    --cell-size: 35px;
-}
-
-.board-medium .cell {
-    width: 28px;
-    height: 28px;
-}
-
-.board-medium .piece {
-    width: 24px;
-    height: 24px;
-}
-
-.board-large {
-    --cell-size: 30px;
-}
-
-.board-large .cell {
-    width: 24px;
-    height: 24px;
-}
-
-.board-large .piece {
-    width: 20px;
-    height: 20px;
-}
-
-.board-xlarge {
-    --cell-size: 25px;
-}
-
-.board-xlarge .cell {
-    width: 20px;
-    height: 20px;
-}
-
-.board-xlarge .piece {
-    width: 16px;
-    height: 16px;
-}
-
-/* 消息区域 - 改为右上角弹窗 */
+/* 消息区域 - 右上角弹窗 */
 .message-area {
     position: fixed;
     top: 20px;
@@ -474,30 +402,7 @@ body {
     background-color: #fff3cd;
 }
 
-/* 添加关闭按钮样式 */
-.message-close {
-    position: absolute;
-    top: 8px;
-    right: 12px;
-    background: none;
-    border: none;
-    font-size: 1.2rem;
-    cursor: pointer;
-    color: inherit;
-    opacity: 0.7;
-    padding: 0;
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.message-close:hover {
-    opacity: 1;
-}
-
-/* 胜利弹窗样式 - 简化版 */
+/* 胜利弹窗样式 */
 .victory-modal {
     display: none;
     position: fixed;
@@ -621,19 +526,19 @@ body {
 
     /* 确保棋盘在移动端显示在最前面 */
     .board-area {
-        order: -1; /* 将棋盘移到最前面 */
+        order: -1;
         width: 100%;
         min-height: 300px;
         margin-bottom: 20px;
     }
 
     .control-panel {
-        order: 1; /* 控制面板第二 */
+        order: 1;
         margin-bottom: 20px;
     }
 
     .status-panel {
-        order: 2; /* 状态面板最后 */
+        order: 2;
         margin-bottom: 20px;
     }
 
