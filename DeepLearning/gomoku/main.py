@@ -46,11 +46,10 @@ def detect_resources():
     return logical_cores, physical_cores, gpu_info
 
 def self_play_worker(replay_buffer, trainer_args, num_games_per_worker):
-    # 持续生成自对弈棋局
     from train import Trainer
     import torch
     model = GomokuNet(device=torch.device("cpu"))
-    trainer = Trainer(model, **trainer_args)
+    trainer = Trainer(model, device=torch.device("cpu"), **trainer_args)
     while True:
         games = trainer.generate_self_play_games_minimax({k: v.cpu() for k, v in model.state_dict().items()}, num_games_per_worker)
         for game in games:
@@ -118,8 +117,9 @@ def monitor_and_adjust_worker(shared_metrics, replay_buffer, self_play_procs, tr
 def train_worker(replay_buffer, trainer_args, shared_metrics):
     from train import Trainer
     import torch
-    model = GomokuNet(device=torch.device("cuda" if torch.cuda.is_available() else "cpu"))
-    trainer = Trainer(model, **trainer_args)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = GomokuNet(device=device)
+    trainer = Trainer(model, device=device, **trainer_args)
     while True:
         batch_size = shared_metrics['batch_size']
         if replay_buffer.qsize() >= batch_size:
@@ -134,8 +134,8 @@ def train_worker(replay_buffer, trainer_args, shared_metrics):
 def evaluate_worker(trainer_args, shared_metrics, interval=600):
     from train import Trainer
     import torch
-    model = GomokuNet(device=torch.device("cuda" if torch.cuda.is_available() else "cpu"))
-    trainer = Trainer(model, **trainer_args)
+    model = GomokuNet(device=torch.device("cpu"))
+    trainer = Trainer(model, device=torch.device("cpu"), **trainer_args)
     while True:
         time.sleep(interval)
         max_level, max_level_name, max_win_rate = trainer.save_by_smart_evaluate()
