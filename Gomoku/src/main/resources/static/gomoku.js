@@ -80,7 +80,6 @@ class GomokuGame {
      */
     getAvailableBoardSize() {
         const boardArea = document.querySelector('.board-area');
-        const boardContainer = document.getElementById('gameBoard');
 
         // 获取容器的实际可用空间
         const containerRect = boardArea.getBoundingClientRect();
@@ -357,10 +356,10 @@ class GomokuGame {
         const gameStatusElement = document.getElementById('gameStatus');
 
         if (this.isGameOver) {
-            if (this.winner === 0) {
+            if (this.winner === 2) {
                 currentPlayerElement.textContent = '平局';
                 gameStatusElement.textContent = '游戏平局';
-                this.showVictoryModal(0); // 显示平局弹窗
+                this.showVictoryModal(2); // 显示平局弹窗
             } else {
                 currentPlayerElement.textContent = this.getPlayerName(this.winner);
                 gameStatusElement.textContent = `${this.getPlayerName(this.winner)} 获胜！`;
@@ -457,14 +456,14 @@ class GomokuGame {
 
     /**
      * 显示胜利弹窗
-     * @param {number} winner 胜利者标识: 1=黑棋获胜, -1=白棋获胜, 0=平局
+     * @param {number} winner 胜利者标识: 1=黑棋获胜, -1=白棋获胜, 2=平局
      */
     showVictoryModal(winner) {
         const modal = document.getElementById('victoryModal');
         const titleElement = document.getElementById('victoryTitle');
         const messageElement = document.getElementById('victoryMessage');
 
-        if (winner === 0) {
+        if (winner === 2) {
             titleElement.textContent = '游戏平局';
             messageElement.textContent = '棋盘已满，本局平局！';
         } else if (winner === 1) {
