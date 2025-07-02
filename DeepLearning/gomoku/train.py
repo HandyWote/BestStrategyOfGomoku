@@ -218,6 +218,8 @@ class Trainer:
         return avg_metrics
 
     def generate_self_play_games_minimax(self, model_state_dict, num_games, mcts_first=True):
+        import os
+        import traceback
         print(f"[自对弈进程] 进入generate_self_play_games_minimax, pid={os.getpid()}")
         try:
             from model import GomokuNet
@@ -238,11 +240,13 @@ class Trainer:
                     board = GomokuBoard()
                     game_history = []
                     step = 0
+                    max_steps = 81
                     if mcts_first:
                         black_is_mcts = True
                     else:
                         black_is_mcts = False
-                    while not board.winner:
+                    while not board.winner and step < max_steps:
+                        print(f"[自对弈进程] game_idx={game_idx}, step={step}, 当前玩家={board.current_player}, pid={os.getpid()}")
                         if (board.current_player == 1 and black_is_mcts) or (board.current_player == -1 and not black_is_mcts):
                             action = mcts.get_move(board, temperature=1.0)
                             row, col = action // 9, action % 9
@@ -256,6 +260,8 @@ class Trainer:
                             'policy': action_probs if action_probs is not None else {},
                             'player': board.current_player
                         })
+                    if step >= max_steps:
+                        print(f"[自对弈进程][警告] 死循环保护触发，game_idx={game_idx}, pid={os.getpid()}")
                     for sample in game_history:
                         sample['value'] = 1 if board.winner == sample['player'] else -1
                     games.append(game_history)
