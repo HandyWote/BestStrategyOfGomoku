@@ -12,6 +12,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Dict
 import os
 import shutil
+import traceback
 
 class RandomPlayer:
     def get_move(self, board):
@@ -217,46 +218,57 @@ class Trainer:
         return avg_metrics
 
     def generate_self_play_games_minimax(self, model_state_dict, num_games, mcts_first=True):
-        from model import GomokuNet
-        from mcts import MCTS
-        from board import GomokuBoard
-        import torch
-        minimax_ai = MinimaxAI(depth=2)
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model = GomokuNet(device=device)
-        model.load_state_dict(model_state_dict)
-        mcts = MCTS(model)
-        games = []
-        for game_idx in range(num_games):
-            board = GomokuBoard()
-            game_history = []
-            step = 0
-            # mcts_first=True: 当前模型执黑，minimax执白；否则反之
-            if mcts_first:
-                black_is_mcts = True
-            else:
-                black_is_mcts = False
-            while not board.winner:
-                if (board.current_player == 1 and black_is_mcts) or (board.current_player == -1 and not black_is_mcts):
-                    # 当前模型走
-                    action = mcts.get_move(board, temperature=1.0)
-                    row, col = action // 9, action % 9
-                else:
-                    # MinimaxAI走
-                    row, col = minimax_ai.get_move(board.board)
-                board.make_move(row, col)
-                step += 1
-                # 记录数据
-                action_probs = mcts.search(board) if ((board.current_player == -1 and black_is_mcts) or (board.current_player == 1 and not black_is_mcts)) else None
-                game_history.append({
-                    'state': board.get_state(),
-                    'policy': action_probs if action_probs is not None else {},
-                    'player': board.current_player
-                })
-            for sample in game_history:
-                sample['value'] = 1 if board.winner == sample['player'] else -1
-            games.append(game_history)
-        return games
+        print(f"[自对弈进程] 进入generate_self_play_games_minimax, pid={os.getpid()}")
+        try:
+            from model import GomokuNet
+            from mcts import MCTS
+            from board import GomokuBoard
+            import torch
+            print(f"[自对弈进程] 初始化MinimaxAI, pid={os.getpid()}")
+            minimax_ai = MinimaxAI(depth=2)
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            print(f"[自对弈进程] 初始化模型, pid={os.getpid()}")
+            model = GomokuNet(device=device)
+            model.load_state_dict(model_state_dict)
+            mcts = MCTS(model)
+            games = []
+            print(f"[自对弈进程] 开始生成{num_games}局, pid={os.getpid()}")
+            for game_idx in range(num_games):
+                try:
+                    board = GomokuBoard()
+                    game_history = []
+                    step = 0
+                    if mcts_first:
+                        black_is_mcts = True
+                    else:
+                        black_is_mcts = False
+                    while not board.winner:
+                        if (board.current_player == 1 and black_is_mcts) or (board.current_player == -1 and not black_is_mcts):
+                            action = mcts.get_move(board, temperature=1.0)
+                            row, col = action // 9, action % 9
+                        else:
+                            row, col = minimax_ai.get_move(board.board)
+                        board.make_move(row, col)
+                        step += 1
+                        action_probs = mcts.search(board) if ((board.current_player == -1 and black_is_mcts) or (board.current_player == 1 and not black_is_mcts)) else None
+                        game_history.append({
+                            'state': board.get_state(),
+                            'policy': action_probs if action_probs is not None else {},
+                            'player': board.current_player
+                        })
+                    for sample in game_history:
+                        sample['value'] = 1 if board.winner == sample['player'] else -1
+                    games.append(game_history)
+                    print(f"[自对弈进程] 完成第{game_idx+1}局, 步数{step}, pid={os.getpid()}")
+                except Exception as e:
+                    print(f"[自对弈进程][单局异常] pid={os.getpid()}，game_idx={game_idx}，异常信息: {e}")
+                    traceback.print_exc()
+            print(f"[自对弈进程] 退出generate_self_play_games_minimax, pid={os.getpid()}, 返回{len(games)}局")
+            return games
+        except Exception as e:
+            print(f"[自对弈进程][函数异常] pid={os.getpid()}，异常信息: {e}")
+            traceback.print_exc()
+            return []
 
     def self_play_minimax(self, num_games: int = 100) -> None:
         print(f"\n开始生成{num_games}局与MinimaxAI自对弈数据...")
