@@ -5,6 +5,13 @@
     box-sizing: border-box;
 }
 
+/* 定义CSS自定义属性的默认值 */
+:root {
+    --cell-size: 30px;
+    --button-size: 24px;
+    --piece-size: 20px;
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segui UI', 'Microsoft YaHei', sans-serif;
     background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
@@ -280,26 +287,7 @@ body {
     background: #deb887;
 }
 
-/* 响应式网格线样式 */
-.board-grid.responsive::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-image:
-        linear-gradient(to right, #8b4513 1px, transparent 1px),
-        linear-gradient(to bottom, #8b4513 1px, transparent 1px);
-    background-size: var(--cell-size) var(--cell-size);
-    background-position: 0 0;
-    pointer-events: none;
-    z-index: 1;
-    border-right: 1px solid #8b4513;
-    border-bottom: 1px solid #8b4513;
-}
-
-/* 网格线样式 */
+/* 网格线样式 - 统一的样式应用于所有网格 */
 .board-grid::before {
     content: '';
     position: absolute;
@@ -310,11 +298,10 @@ body {
     background-image:
         linear-gradient(to right, #8b4513 1px, transparent 1px),
         linear-gradient(to bottom, #8b4513 1px, transparent 1px);
-    background-size: var(--cell-size) var(--cell-size);
+    background-size: var(--cell-size, 30px) var(--cell-size, 30px);
     background-position: 0 0;
     pointer-events: none;
     z-index: 1;
-    /* 添加边框确保最后一行/列的线条显示 */
     border-right: 1px solid #8b4513;
     border-bottom: 1px solid #8b4513;
 }
@@ -331,8 +318,8 @@ body {
 
 /* 响应式交点按钮 */
 .cell.responsive {
-    width: var(--button-size);
-    height: var(--button-size);
+    width: var(--button-size, 24px);
+    height: var(--button-size, 24px);
 }
 
 .cell:hover {
@@ -362,8 +349,8 @@ body {
 
 /* 响应式棋子 */
 .piece.responsive {
-    width: var(--piece-size);
-    height: var(--piece-size);
+    width: var(--piece-size, 20px);
+    height: var(--piece-size, 20px);
 }
 
 .piece.black {
