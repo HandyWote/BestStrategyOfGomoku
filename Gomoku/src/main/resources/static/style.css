@@ -530,6 +530,8 @@ body {
         width: 100%;
         min-height: 300px;
         margin-bottom: 20px;
+        /* 减少内边距以给棋盘更多空间 */
+        padding: 10px;
     }
 
     .control-panel {
@@ -556,13 +558,21 @@ body {
     }
 
     .game-board {
-        padding: 15px;
+        /* 减少内边距以给棋盘更多空间 */
+        padding: 10px;
+        /* 确保棋盘居中显示 */
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
 
     /* 移动端确保棋盘不会超出屏幕 */
     .board-grid.responsive {
-        max-width: calc(100vw - 60px);
-        max-height: calc(100vh - 300px);
+        /* 移除最大宽度限制，让棋盘可以占满屏幕宽度 */
+        max-width: calc(100vw - 30px);
+        max-height: calc(100vh - 250px);
+        /* 确保棋盘在容器内居中 */
+        margin: 0 auto;
     }
 
     .button-group,
@@ -615,17 +625,20 @@ body {
     }
 
     .board-area {
-        padding: 10px;
+        /* 进一步减少内边距 */
+        padding: 8px;
         min-height: 250px;
     }
 
     .game-board {
-        padding: 10px;
+        /* 进一步减少内边距 */
+        padding: 8px;
     }
 
     .board-grid.responsive {
-        max-width: calc(100vw - 40px);
-        max-height: calc(100vh - 250px);
+        /* 超小屏幕下给棋盘更多空间 */
+        max-width: calc(100vw - 25px);
+        max-height: calc(100vh - 200px);
     }
 }
 

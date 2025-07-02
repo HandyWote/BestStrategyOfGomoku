@@ -127,24 +127,36 @@ class GomokuGame {
         const boardPadding = 48;
         const availableWidth = containerRect.width - containerPadding - boardPadding;
 
-        let maxBoardSize;
+        let maxBoardSize, cellSize;
+
         if (isMobile) {
-            maxBoardSize = Math.min(availableWidth, window.innerWidth * 0.85, window.innerHeight * 0.6);
+            // 移动端：让棋盘宽度几乎占满屏幕宽度
+            const screenWidth = window.innerWidth;
+            const mobileMargin = 40; // 两侧留出的边距
+            const targetBoardWidth = screenWidth - mobileMargin;
+
+            // 根据目标棋盘宽度计算单元格大小
+            cellSize = targetBoardWidth / this.boardSize;
+
+            // 限制单元格大小范围，确保棋盘不会过大或过小
+            cellSize = Math.max(15, Math.min(45, cellSize));
+
+            // 重新计算实际棋盘尺寸
+            const actualBoardWidth = (this.boardSize - 1) * cellSize;
+            const actualBoardHeight = (this.boardSize - 1) * cellSize;
+
+            maxBoardSize = Math.max(actualBoardWidth, actualBoardHeight);
         } else {
             const availableHeight = Math.min(containerRect.height - containerPadding - boardPadding, availableWidth);
             maxBoardSize = Math.min(availableWidth, availableHeight, GAME_CONFIG.MAX_BOARD_DISPLAY_SIZE);
-        }
 
-        const availableSize = Math.max(200, maxBoardSize);
+            const availableSize = Math.max(200, maxBoardSize);
 
-        // 计算各种尺寸
-        let cellSize = Math.max(
-            GAME_CONFIG.MIN_CELL_SIZE,
-            Math.min(GAME_CONFIG.MAX_CELL_SIZE, availableSize / (this.boardSize - 1))
-        );
-
-        if (isMobile) {
-            cellSize = Math.min(cellSize, 30);
+            // 桌面端保持原有逻辑
+            cellSize = Math.max(
+                GAME_CONFIG.MIN_CELL_SIZE,
+                Math.min(GAME_CONFIG.MAX_CELL_SIZE, availableSize / (this.boardSize - 1))
+            );
         }
 
         cellSize = Math.floor(cellSize);
