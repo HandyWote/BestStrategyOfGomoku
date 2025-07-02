@@ -45,15 +45,36 @@ def detect_resources():
         print("[WARN] 未检测到GPU或未安装pynvml:", e)
     return logical_cores, physical_cores, gpu_info
 
-def self_play_worker(replay_buffer, trainer_args, num_games_per_worker):
+def self_play_worker(replay_buffer, trainer_args, num_games_per_worker, buffer_counter, buffer_maxsize):
     from train import Trainer
     import torch
+    import time
+    import os
+    import traceback
+    print(f"[自对弈进程] 进程启动，pid={os.getpid()}")
     model = GomokuNet(device=torch.device("cpu"))
     trainer = Trainer(model, device=torch.device("cpu"), **trainer_args)
     while True:
-        games = trainer.generate_self_play_games_minimax({k: v.cpu() for k, v in model.state_dict().items()}, num_games_per_worker)
-        for game in games:
-            replay_buffer.put(game)
+        try:
+            print(f"[自对弈进程] 准备生成自对弈数据，pid={os.getpid()}")
+            games = trainer.generate_self_play_games_minimax({k: v.cpu() for k, v in model.state_dict().items()}, num_games_per_worker)
+            print(f"[自对弈进程] 生成完毕，获得{len(games)}局，pid={os.getpid()}")
+            for game in games:
+                while True:
+                    if buffer_counter.value < buffer_maxsize:
+                        print(f"[自对弈进程] 尝试put一局到经验池，pid={os.getpid()}，当前计数: {buffer_counter.value}")
+                        replay_buffer.put(game)
+                        with buffer_counter.get_lock():
+                            buffer_counter.value += 1
+                        print(f"[自对弈进程] put成功，当前计数: {buffer_counter.value}")
+                        break
+                    else:
+                        time.sleep(0.1)
+            print(f"[自对弈进程] 已生成并put {len(games)} 局到经验池，当前计数: {buffer_counter.value}")
+        except Exception as e:
+            print(f"[自对弈进程][异常] pid={os.getpid()}，异常信息: {e}")
+            traceback.print_exc()
+            time.sleep(5)
 
 def dynamic_adjust(self_play_workers, loss, win_rate, buffer_util, min_workers, max_workers):
     # 经验池利用率优先
@@ -84,7 +105,7 @@ def auto_batch_size(gpu_info, min_bs=64, max_bs=512):
     else:
         return min_bs
 
-def monitor_and_adjust_worker(shared_metrics, replay_buffer, self_play_procs, train_proc, cpu_workers, gpu_info, min_workers, max_workers):
+def monitor_and_adjust_worker(shared_metrics, replay_buffer, self_play_procs, train_proc, cpu_workers, gpu_info, min_workers, max_workers, buffer_counter, buffer_maxsize):
     import time
     batch_size = shared_metrics['batch_size']
     while True:
@@ -92,7 +113,7 @@ def monitor_and_adjust_worker(shared_metrics, replay_buffer, self_play_procs, tr
         # 采集指标
         loss = shared_metrics.get('loss', 1.0)
         win_rate = shared_metrics.get('win_rate', 0.5)
-        buffer_util = replay_buffer.qsize() / shared_metrics['buffer_maxsize']
+        buffer_util = buffer_counter.value / buffer_maxsize
         # 动态调整自对弈进程数
         new_workers = dynamic_adjust(len(self_play_procs), loss, win_rate, buffer_util, min_workers, max_workers)
         # 动态调整batch size
@@ -104,7 +125,7 @@ def monitor_and_adjust_worker(shared_metrics, replay_buffer, self_play_procs, tr
         diff = new_workers - len(self_play_procs)
         if diff > 0:
             for _ in range(diff):
-                p = mp.Process(target=self_play_worker, args=(replay_buffer, shared_metrics['trainer_args'], shared_metrics['num_games_per_worker']))
+                p = mp.Process(target=self_play_worker, args=(replay_buffer, shared_metrics['trainer_args'], shared_metrics['num_games_per_worker'], buffer_counter, buffer_maxsize))
                 p.start()
                 self_play_procs.append(p)
         elif diff < 0:
@@ -114,7 +135,7 @@ def monitor_and_adjust_worker(shared_metrics, replay_buffer, self_play_procs, tr
                 print("[动态调整] 终止一个自对弈进程")
         print(f"[监控] 当前自对弈进程数: {len(self_play_procs)}, batch size: {shared_metrics['batch_size']}, 经验池利用率: {buffer_util:.2f}, 损失: {loss:.4f}, 胜率: {win_rate:.2%}")
 
-def train_worker(replay_buffer, trainer_args, shared_metrics):
+def train_worker(replay_buffer, trainer_args, shared_metrics, buffer_counter):
     from train import Trainer
     import torch
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -122,8 +143,12 @@ def train_worker(replay_buffer, trainer_args, shared_metrics):
     trainer = Trainer(model, device=device, **trainer_args)
     while True:
         batch_size = shared_metrics['batch_size']
-        if replay_buffer.qsize() >= batch_size:
-            batch = [replay_buffer.get() for _ in range(batch_size)]
+        if buffer_counter.value >= batch_size:
+            batch = []
+            for _ in range(batch_size):
+                batch.append(replay_buffer.get())
+                with buffer_counter.get_lock():
+                    buffer_counter.value -= 1
             metrics = trainer.train_step()  # 需适配batch输入
             shared_metrics['loss'] = metrics.get('loss', 1.0)
             shared_metrics['policy_loss'] = metrics.get('policy_loss', 0.0)
@@ -151,7 +176,7 @@ def async_train_main(model_path=None):
         print("[资源检测] 未检测到GPU")
     cpu_workers = max(1, int(logical_cores * 0.7))
     min_workers = 1
-    max_workers = max(2, int(logical_cores * 0.8))
+    max_workers = max(2, int(logical_cores * 2))  # Linux下最多2倍核心数
     batch_size = auto_batch_size(gpu_info)
     print(f"[分配] 初始自对弈进程数: {cpu_workers}")
     print(f"[分配] 初始训练batch size: {batch_size}")
@@ -159,6 +184,7 @@ def async_train_main(model_path=None):
     mp_manager = mp.Manager()
     replay_buffer = mp_manager.Queue(maxsize=buffer_maxsize)
     shared_metrics = mp_manager.dict()
+    buffer_counter = mp.Value('i', 0)  # 新增计数器
     trainer_args = {'opponent_model_path': "models/best_model.pth", 'model_dir': "models"}
     num_games_per_worker = 10
     shared_metrics['batch_size'] = batch_size
@@ -168,17 +194,17 @@ def async_train_main(model_path=None):
     shared_metrics['win_rate'] = 0.5
     shared_metrics['buffer_maxsize'] = buffer_maxsize
     # 启动自对弈进程
-    self_play_procs = [mp.Process(target=self_play_worker, args=(replay_buffer, trainer_args, num_games_per_worker)) for _ in range(cpu_workers)]
+    self_play_procs = [mp.Process(target=self_play_worker, args=(replay_buffer, trainer_args, num_games_per_worker, buffer_counter, buffer_maxsize)) for _ in range(cpu_workers)]
     for p in self_play_procs:
         p.start()
     # 启动训练进程
-    train_proc = mp.Process(target=train_worker, args=(replay_buffer, trainer_args, shared_metrics))
+    train_proc = mp.Process(target=train_worker, args=(replay_buffer, trainer_args, shared_metrics, buffer_counter))
     train_proc.start()
     # 启动评估进程
     eval_proc = mp.Process(target=evaluate_worker, args=(trainer_args, shared_metrics))
     eval_proc.start()
     # 启动监控与动态调整线程
-    monitor_thread = threading.Thread(target=monitor_and_adjust_worker, args=(shared_metrics, replay_buffer, self_play_procs, train_proc, cpu_workers, gpu_info, min_workers, max_workers), daemon=True)
+    monitor_thread = threading.Thread(target=monitor_and_adjust_worker, args=(shared_metrics, replay_buffer, self_play_procs, train_proc, cpu_workers, gpu_info, min_workers, max_workers, buffer_counter, buffer_maxsize), daemon=True)
     monitor_thread.start()
     for p in self_play_procs:
         p.join()
