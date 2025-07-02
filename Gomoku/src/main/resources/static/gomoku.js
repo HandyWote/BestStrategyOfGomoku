@@ -6,14 +6,15 @@ class GomokuGame {
         // 棋盘尺寸（x 和 y 相同）
         this.boardSize = 9;
         // 当前玩家: 1 为黑棋，-1 为白棋
-        this.currentPlayer = 1;
+        this.nextPlayer = 1;
         // 二维数组表示棋盘状态，0 = 空，1 = 黑棋，-1 = 白棋
-        this.gameBoard = [];
+        this.board = [];
         // 游戏是否结束标志
         this.isGameOver = false;
-        // 获胜方: 1 黑棋，-1 白棋，0 平局
-        this.winner = null;
-
+        // 获胜方: 1 黑棋，-1 白棋，2 平局，0 未决定
+        this.winner = 0;
+        // 反馈消息
+        this.msg = null;
         this.init();
     }
 
@@ -200,7 +201,7 @@ class GomokuGame {
         boardContainer.appendChild(grid);
 
         // 如果有游戏数据，重新渲染棋子
-        if (this.gameBoard && this.gameBoard.length > 0) {
+        if (this.board && this.board.length > 0) {
             this.updateBoard();
         }
     }
@@ -248,14 +249,14 @@ class GomokuGame {
             const result = await response.json();
 
             if (result.code === 0) {
-                this.gameBoard = result.board;
-                this.currentPlayer = result.nextPlayer || 1;
+                this.board = result.board;
+                this.nextPlayer = result.nextPlayer || 1;
                 this.isGameOver = result.isGameOver || false;
-                this.winner = result.winner;
+                this.winner = result.winner || 0;
 
                 // 根据加载的棋盘数据自动调整棋盘大小
-                if (this.gameBoard && this.gameBoard.length > 0) {
-                    const loadedBoardSize = this.gameBoard.length;
+                if (this.board && this.board.length > 0) {
+                    const loadedBoardSize = this.board.length;
                     if (loadedBoardSize !== this.boardSize) {
                         this.boardSize = loadedBoardSize;
                         document.getElementById('boardSize').value = loadedBoardSize;
@@ -285,7 +286,7 @@ class GomokuGame {
             return;
         }
 
-        if (this.gameBoard[row] && this.gameBoard[row][col] !== 0) {
+        if (this.board[row] && this.board[row][col] !== 0) {
             this.showMessage('该位置已有棋子，请选择其他位置！', 'warning');
             return;
         }
@@ -299,16 +300,28 @@ class GomokuGame {
                 body: JSON.stringify({
                     x: row,
                     y: col,
-                    player: this.currentPlayer
+                    player: this.nextPlayer
                 })
             });
 
             const result = await response.json();
 
             if (result.code === 0) {
-                // 更新成功后重新加载游戏状态
+                // 落子成功后重新加载游戏状态以获取最新的游戏结果
                 await this.loadGame();
-                this.showMessage(`${this.getPlayerName(this.currentPlayer)} 落子成功！`, 'success');
+
+                // 检查游戏是否结束，如果结束则显示相应消息
+                if (this.isGameOver) {
+                    if (this.winner === 2) {
+                        this.showMessage('游戏结束，平局！', 'info');
+                    } else if (this.winner === 1) {
+                        this.showMessage('游戏结束，黑棋获胜！', 'success');
+                    } else if (this.winner === -1) {
+                        this.showMessage('游戏结束，白棋获胜！', 'success');
+                    }
+                } else {
+                    this.showMessage(`${this.getPlayerName(this.nextPlayer === 1 ? -1 : 1)} 落子成功！`, 'success');
+                }
             } else {
                 this.showMessage(`落子失败: ${result.msg}`, 'error');
             }
@@ -335,9 +348,9 @@ class GomokuGame {
             }
 
             // 根据棋盘状态添加棋子
-            if (this.gameBoard[row] && this.gameBoard[row][col] !== 0) {
+            if (this.board[row] && this.board[row][col] !== 0) {
                 const piece = document.createElement('div');
-                piece.className = `piece ${this.gameBoard[row][col] === 1 ? 'black' : 'white'} responsive`;
+                piece.className = `piece ${this.board[row][col] === 1 ? 'black' : 'white'} responsive`;
                 piece.style.width = pieceSize + 'px';
                 piece.style.height = pieceSize + 'px';
                 cell.appendChild(piece);
@@ -356,17 +369,27 @@ class GomokuGame {
         const gameStatusElement = document.getElementById('gameStatus');
 
         if (this.isGameOver) {
+            // 游戏结束，显示获胜者（从后端获取）
             if (this.winner === 2) {
                 currentPlayerElement.textContent = '平局';
                 gameStatusElement.textContent = '游戏平局';
-                this.showVictoryModal(2); // 显示平局弹窗
+                this.showVictoryModal(2);
+            } else if (this.winner === 1) {
+                currentPlayerElement.textContent = '黑棋';
+                gameStatusElement.textContent = '黑棋获胜！';
+                this.showVictoryModal(1);
+            } else if (this.winner === -1) {
+                currentPlayerElement.textContent = '白棋';
+                gameStatusElement.textContent = '白棋获胜！';
+                this.showVictoryModal(-1);
             } else {
-                currentPlayerElement.textContent = this.getPlayerName(this.winner);
-                gameStatusElement.textContent = `${this.getPlayerName(this.winner)} 获胜！`;
-                this.showVictoryModal(this.winner); // 显示胜利弹窗
+                // 游戏结束但没有获胜者信息
+                currentPlayerElement.textContent = '未知';
+                gameStatusElement.textContent = '游戏结束';
             }
         } else {
-            currentPlayerElement.textContent = this.getPlayerName(this.currentPlayer);
+            // 游戏进行中，显示当前玩家
+            currentPlayerElement.textContent = this.getPlayerName(this.nextPlayer);
             gameStatusElement.textContent = '进行中';
         }
     }
@@ -411,8 +434,8 @@ class GomokuGame {
 
             if (result.code === 0) {
                 // 重置游戏状态
-                this.gameBoard = [];
-                this.currentPlayer = 1;
+                this.board = [];
+                this.nextPlayer = 1;
                 this.isGameOver = false;
                 this.winner = null;
 
@@ -469,7 +492,7 @@ class GomokuGame {
         } else if (winner === 1) {
             titleElement.textContent = '黑棋获胜！';
             messageElement.textContent = '恭喜黑方玩家获得胜利！';
-        } else {
+        } else if (winner === -1){
             titleElement.textContent = '白棋获胜！';
             messageElement.textContent = '恭喜白方玩家获得胜利！';
         }
