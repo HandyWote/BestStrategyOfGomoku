@@ -246,13 +246,19 @@ class Trainer:
                     else:
                         black_is_mcts = False
                     while not board.winner and step < max_steps:
-                        print(f"[自对弈进程] game_idx={game_idx}, step={step}, 当前玩家={board.current_player}, pid={os.getpid()}")
+                        print(f"[自对弈进程] game_idx={game_idx}, step={step}, 当前玩家={board.current_player}, pid={os.getpid()} - 准备调用get_move")
                         if (board.current_player == 1 and black_is_mcts) or (board.current_player == -1 and not black_is_mcts):
+                            print(f"[自对弈进程] 调用MCTS.get_move, pid={os.getpid()}")
                             action = mcts.get_move(board, temperature=1.0)
+                            print(f"[自对弈进程] MCTS.get_move返回, action={action}, pid={os.getpid()}")
                             row, col = action // 9, action % 9
                         else:
+                            print(f"[自对弈进程] 调用MinimaxAI.get_move, pid={os.getpid()}")
                             row, col = minimax_ai.get_move(board.board)
+                            print(f"[自对弈进程] MinimaxAI.get_move返回, row={row}, col={col}, pid={os.getpid()}")
+                        print(f"[自对弈进程] 调用board.make_move, row={row}, col={col}, pid={os.getpid()}")
                         board.make_move(row, col)
+                        print(f"[自对弈进程] board.make_move完成, pid={os.getpid()}")
                         step += 1
                         action_probs = mcts.search(board) if ((board.current_player == -1 and black_is_mcts) or (board.current_player == 1 and not black_is_mcts)) else None
                         game_history.append({
