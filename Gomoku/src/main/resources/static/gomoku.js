@@ -1,60 +1,101 @@
+// 游戏配置常量
+const GAME_CONFIG = {
+    MIN_BOARD_SIZE: 5,
+    MAX_BOARD_SIZE: 25,
+    DEFAULT_BOARD_SIZE: 9,
+    MIN_CELL_SIZE: 15,
+    MAX_CELL_SIZE: 50,
+    MAX_BOARD_DISPLAY_SIZE: 600,
+    MOBILE_BREAKPOINT: 768,
+    MESSAGE_TIMEOUT: 3000,
+
+    // 尺寸比例
+    BUTTON_SIZE_RATIO: 0.8,
+    PIECE_SIZE_RATIO: 0.7,
+
+    // 玩家标识
+    PLAYER: {
+        BLACK: 1,
+        WHITE: -1,
+        DRAW: 2,
+        NONE: 0
+    }
+};
+
 // GomokuGame 类：负责游戏逻辑与界面交互
 class GomokuGame {
     constructor() {
-        // 游戏ID（用于标识不同棋局）
         this.gameId = 1;
-        // 棋盘尺寸（x 和 y 相同）
-        this.boardSize = 9;
-        // 当前玩家: 1 为黑棋，-1 为白棋
-        this.nextPlayer = 1;
-        // 二维数组表示棋盘状态，0 = 空，1 = 黑棋，-1 = 白棋
+        this.boardSize = GAME_CONFIG.DEFAULT_BOARD_SIZE;
+        this.nextPlayer = GAME_CONFIG.PLAYER.BLACK;
         this.board = [];
-        // 游戏是否结束标志
         this.isGameOver = false;
-        // 获胜方: 1 黑棋，-1 白棋，2 平局，0 未决定
-        this.winner = 0;
-        // 反馈消息
+        this.winner = GAME_CONFIG.PLAYER.NONE;
         this.msg = null;
+
+        // 缓存DOM元素
+        this.elements = this.cacheElements();
+
         this.init();
     }
 
     /**
-     * 初始化方法：绑定事件、创建棋盘、显示欢迎信息
+     * 缓存常用DOM元素
+     */
+    cacheElements() {
+        return {
+            gameId: document.getElementById('gameId'),
+            boardSize: document.getElementById('boardSize'),
+            gameBoard: document.getElementById('gameBoard'),
+            currentPlayer: document.getElementById('currentPlayer'),
+            gameStatus: document.getElementById('gameStatus'),
+            messageBox: document.getElementById('messageBox'),
+            victoryModal: document.getElementById('victoryModal'),
+            victoryTitle: document.getElementById('victoryTitle'),
+            victoryMessage: document.getElementById('victoryMessage')
+        };
+    }
+
+    /**
+     * 初始化方法
      */
     init() {
         this.bindEvents();
         this.createBoard();
         this.showMessage('欢迎来到五子棋游戏！选择棋盘大小后点击"创建游戏"开始新游戏。', 'info');
 
-        // 添加窗口大小变化监听器
-        window.addEventListener('resize', () => {
-            this.createBoard();
-        });
+        window.addEventListener('resize', () => this.createBoard());
     }
 
     /**
-     * 绑定页面上各按钮和输入框的事件处理函数
+     * 绑定所有事件处理函数
      */
     bindEvents() {
-        document.getElementById('createGame').addEventListener('click', () => this.createGame());
-        document.getElementById('loadGame').addEventListener('click', () => this.loadGame());
-        document.getElementById('resetGame').addEventListener('click', () => this.resetGame());
-        document.getElementById('deleteGame').addEventListener('click', () => this.deleteGame());
-        document.getElementById('gameId').addEventListener('change', (e) => {
+        // 游戏控制按钮
+        const buttonEvents = [
+            ['createGame', () => this.createGame()],
+            ['loadGame', () => this.loadGame()],
+            ['resetGame', () => this.resetGame()],
+            ['deleteGame', () => this.deleteGame()],
+            ['newGameBtn', () => this.startNewGame()],
+            ['closeModalBtn', () => this.hideVictoryModal()]
+        ];
+
+        buttonEvents.forEach(([id, handler]) => {
+            document.getElementById(id).addEventListener('click', handler);
+        });
+
+        // 输入框事件
+        this.elements.gameId.addEventListener('change', (e) => {
             this.gameId = parseInt(e.target.value) || 1;
         });
 
-        // 添加棋盘大小输入事件
-        document.getElementById('boardSize').addEventListener('change', (e) => {
-            this.updateBoardSize(parseInt(e.target.value) || 9);
+        this.elements.boardSize.addEventListener('change', (e) => {
+            this.updateBoardSize(parseInt(e.target.value) || GAME_CONFIG.DEFAULT_BOARD_SIZE);
         });
 
-        // 胜利弹窗事件绑定
-        document.getElementById('newGameBtn').addEventListener('click', () => this.startNewGame());
-        document.getElementById('closeModalBtn').addEventListener('click', () => this.hideVictoryModal());
-
-        // 点击弹窗背景关闭
-        document.getElementById('victoryModal').addEventListener('click', (e) => {
+        // 弹窗事件
+        this.elements.victoryModal.addEventListener('click', (e) => {
             if (e.target.id === 'victoryModal') {
                 this.hideVictoryModal();
             }
@@ -62,162 +103,146 @@ class GomokuGame {
     }
 
     /**
-     * 更新棋盘大小：校验范围、重建棋盘、提示消息
-     * @param {number} size 新的棋盘边长
+     * 更新棋盘大小
      */
     updateBoardSize(size) {
-        // 限制棋盘大小在合理范围内
-        if (size < 5) size = 5;
-        if (size > 25) size = 25;
+        size = Math.max(GAME_CONFIG.MIN_BOARD_SIZE, Math.min(GAME_CONFIG.MAX_BOARD_SIZE, size));
 
         this.boardSize = size;
-        document.getElementById('boardSize').value = size; // 更新输入框显示
+        this.elements.boardSize.value = size;
         this.createBoard();
         this.showMessage(`棋盘大小已设置为 ${size}x${size}`, 'info');
     }
 
     /**
-     * 获取可用的棋盘容器尺寸
+     * 响应式尺寸计算器
      */
-    getAvailableBoardSize() {
+    calculateResponsiveSizes() {
         const boardArea = document.querySelector('.board-area');
-
-        // 获取容器的实际可用空间
         const containerRect = boardArea.getBoundingClientRect();
-        const containerPadding = 80; // board-area的padding (40px * 2)
-        const boardPadding = 48; // game-board的padding (24px * 2)
+        const isMobile = window.innerWidth <= GAME_CONFIG.MOBILE_BREAKPOINT;
 
         // 计算可用空间
+        const containerPadding = 80;
+        const boardPadding = 48;
         const availableWidth = containerRect.width - containerPadding - boardPadding;
-        const availableHeight = Math.min(containerRect.height - containerPadding - boardPadding, availableWidth);
-
-        // 在移动设备上，还需要考虑视口限制
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
 
         let maxBoardSize;
-
-        if (viewportWidth <= 768) {
-            // 移动设备：使用较小的尺寸，留出更多边距
-            maxBoardSize = Math.min(availableWidth, viewportWidth * 0.85, viewportHeight * 0.6);
+        if (isMobile) {
+            maxBoardSize = Math.min(availableWidth, window.innerWidth * 0.85, window.innerHeight * 0.6);
         } else {
-            // 桌面设备：使用容器可用空间
-            maxBoardSize = Math.min(availableWidth, availableHeight, 600); // 最大600px
+            const availableHeight = Math.min(containerRect.height - containerPadding - boardPadding, availableWidth);
+            maxBoardSize = Math.min(availableWidth, availableHeight, GAME_CONFIG.MAX_BOARD_DISPLAY_SIZE);
         }
 
-        return Math.max(200, maxBoardSize); // 最小200px
-    }
+        const availableSize = Math.max(200, maxBoardSize);
 
-    /**
-     * 根据可用空间和棋盘大小计算最适合的单元格尺寸
-     */
-    getResponsiveCellSize() {
-        const availableSize = this.getAvailableBoardSize();
+        // 计算各种尺寸
+        let cellSize = Math.max(
+            GAME_CONFIG.MIN_CELL_SIZE,
+            Math.min(GAME_CONFIG.MAX_CELL_SIZE, availableSize / (this.boardSize - 1))
+        );
 
-        // 计算单元格大小：可用空间除以棋盘格数减1（因为是交点数）
-        const calculatedCellSize = availableSize / (this.boardSize - 1);
-
-        // 设置合理的单元格大小范围
-        const minCellSize = 15;
-        const maxCellSize = 50;
-
-        let cellSize = Math.max(minCellSize, Math.min(maxCellSize, calculatedCellSize));
-
-        // 在移动设备上进一步限制尺寸
-        if (window.innerWidth <= 768) {
+        if (isMobile) {
             cellSize = Math.min(cellSize, 30);
         }
 
-        return Math.floor(cellSize);
+        cellSize = Math.floor(cellSize);
+
+        return {
+            cellSize,
+            buttonSize: Math.max(12, Math.min(40, Math.floor(cellSize * GAME_CONFIG.BUTTON_SIZE_RATIO))),
+            pieceSize: Math.max(10, Math.min(35, Math.floor(cellSize * GAME_CONFIG.PIECE_SIZE_RATIO))),
+            boardWidth: (this.boardSize - 1) * cellSize,
+            boardHeight: (this.boardSize - 1) * cellSize
+        };
     }
 
     /**
-     * 根据单元格尺寸计算按钮尺寸
-     */
-    getResponsiveCellButtonSize(cellSize) {
-        // 按钮尺寸通常是单元格尺寸的80%
-        const buttonSize = Math.floor(cellSize * 0.8);
-        return Math.max(12, Math.min(40, buttonSize));
-    }
-
-    /**
-     * 根据单元格尺寸计算棋子尺寸
-     */
-    getResponsivePieceSize(cellSize) {
-        // 棋子尺寸通常是单元格尺寸的70%
-        const pieceSize = Math.floor(cellSize * 0.7);
-        return Math.max(10, Math.min(35, pieceSize));
-    }
-
-    /**
-     * 创建棋盘DOM：生成网格线和交点按钮（响应式版本）
+     * 创建棋盘DOM
      */
     createBoard() {
-        const boardContainer = document.getElementById('gameBoard');
-        boardContainer.innerHTML = '';
+        this.elements.gameBoard.innerHTML = '';
 
         const grid = document.createElement('div');
         grid.className = 'board-grid responsive';
 
-        // 使用响应式计算的尺寸
-        const cellSize = this.getResponsiveCellSize();
-        const buttonSize = this.getResponsiveCellButtonSize(cellSize);
-        const pieceSize = this.getResponsivePieceSize(cellSize);
+        const sizes = this.calculateResponsiveSizes();
 
-        // 计算棋盘总尺寸
-        const boardWidth = (this.boardSize - 1) * cellSize;
-        const boardHeight = (this.boardSize - 1) * cellSize;
-
-        // 设置CSS变量，用于网格线和其他样式
-        grid.style.setProperty('--cell-size', cellSize + 'px');
-        grid.style.setProperty('--button-size', buttonSize + 'px');
-        grid.style.setProperty('--piece-size', pieceSize + 'px');
-
-        grid.style.width = boardWidth + 'px';
-        grid.style.height = boardHeight + 'px';
+        // 设置CSS变量和样式
+        Object.entries({
+            '--cell-size': sizes.cellSize + 'px',
+            '--button-size': sizes.buttonSize + 'px',
+            '--piece-size': sizes.pieceSize + 'px',
+            width: sizes.boardWidth + 'px',
+            height: sizes.boardHeight + 'px'
+        }).forEach(([property, value]) => {
+            grid.style.setProperty(property, value);
+        });
 
         // 创建交点按钮
         for (let i = 0; i < this.boardSize; i++) {
             for (let j = 0; j < this.boardSize; j++) {
-                const cell = document.createElement('button');
-                cell.className = 'cell responsive';
-                cell.dataset.row = i.toString();
-                cell.dataset.col = j.toString();
-
-                // 计算交点位置
-                const x = j * cellSize - buttonSize / 2;
-                const y = i * cellSize - buttonSize / 2;
-
-                cell.style.left = x + 'px';
-                cell.style.top = y + 'px';
-                cell.style.width = buttonSize + 'px';
-                cell.style.height = buttonSize + 'px';
-
-                cell.addEventListener('click', () => this.makeMove(i, j));
+                const cell = this.createCell(i, j, sizes);
                 grid.appendChild(cell);
             }
         }
 
-        boardContainer.appendChild(grid);
+        this.elements.gameBoard.appendChild(grid);
 
-        // 如果有游戏数据，重新渲染棋子
-        if (this.board && this.board.length > 0) {
+        // 重新渲染已有棋子
+        if (this.board?.length > 0) {
             this.updateBoard();
         }
     }
 
     /**
-     * 发起创建游戏的 API 请求
+     * 创建单个交点按钮
+     */
+    createCell(row, col, sizes) {
+        const cell = document.createElement('button');
+        cell.className = 'cell responsive';
+        cell.dataset.row = row.toString();
+        cell.dataset.col = col.toString();
+
+        const x = col * sizes.cellSize - sizes.buttonSize / 2;
+        const y = row * sizes.cellSize - sizes.buttonSize / 2;
+
+        Object.assign(cell.style, {
+            left: x + 'px',
+            top: y + 'px',
+            width: sizes.buttonSize + 'px',
+            height: sizes.buttonSize + 'px'
+        });
+
+        cell.addEventListener('click', () => this.makeMove(row, col));
+        return cell;
+    }
+
+    /**
+     * 通用API请求处理
+     */
+    async apiRequest(url, options = {}) {
+        try {
+            const response = await fetch(url, {
+                headers: { 'Content-Type': 'application/json' },
+                ...options
+            });
+            return await response.json();
+        } catch (error) {
+            throw new Error(`网络请求失败: ${error.message}`);
+        }
+    }
+
+    /**
+     * 创建游戏
      */
     async createGame() {
         try {
-            this.gameId = parseInt(document.getElementById('gameId').value) || 1;
+            this.gameId = parseInt(this.elements.gameId.value) || 1;
 
-            const response = await fetch('/api/gomoku', {
+            const result = await this.apiRequest('/api/gomoku', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
                 body: JSON.stringify({
                     id: this.gameId,
                     x: this.boardSize,
@@ -225,13 +250,11 @@ class GomokuGame {
                 })
             });
 
-            const result = await response.json();
-
             if (result.code === 0) {
                 this.showMessage(`游戏 ${this.gameId} (${this.boardSize}x${this.boardSize}) 创建成功！`, 'success');
                 await this.loadGame();
             } else {
-                this.showMessage(`创建游戏失败: ${result.msg} `, 'error');
+                this.showMessage(`创建游戏失败: ${result.msg}`, 'error');
             }
         } catch (error) {
             this.showMessage(`创建游戏时发生错误: ${error.message}`, 'error');
@@ -239,33 +262,16 @@ class GomokuGame {
     }
 
     /**
-     * 加载指定游戏数据并更新界面
+     * 加载游戏
      */
     async loadGame() {
         try {
-            this.gameId = parseInt(document.getElementById('gameId').value) || 1;
+            this.gameId = parseInt(this.elements.gameId.value) || 1;
 
-            const response = await fetch(`/api/gomoku/${this.gameId}?showStatus=true`);
-            const result = await response.json();
+            const result = await this.apiRequest(`/api/gomoku/${this.gameId}?showStatus=true`);
 
             if (result.code === 0) {
-                this.board = result.board;
-                this.nextPlayer = result.nextPlayer || 1;
-                this.isGameOver = result.isGameOver || false;
-                this.winner = result.winner || 0;
-
-                // 根据加载的棋盘数据自动调整棋盘大小
-                if (this.board && this.board.length > 0) {
-                    const loadedBoardSize = this.board.length;
-                    if (loadedBoardSize !== this.boardSize) {
-                        this.boardSize = loadedBoardSize;
-                        document.getElementById('boardSize').value = loadedBoardSize;
-                        this.createBoard();
-                    }
-                }
-
-                this.updateBoard();
-                this.updateGameInfo();
+                this.updateGameState(result);
                 this.showMessage(`游戏 ${this.gameId} (${this.boardSize}x${this.boardSize}) 加载成功！`, 'success');
             } else {
                 this.showMessage(`加载游戏失败: ${result.msg}`, 'error');
@@ -276,9 +282,30 @@ class GomokuGame {
     }
 
     /**
-     * 执行落子操作：调用API并刷新游戏状态
-     * @param {number} row 行索引
-     * @param {number} col 列索引
+     * 更新游戏状态
+     */
+    updateGameState(result) {
+        this.board = result.board;
+        this.nextPlayer = result.nextPlayer || GAME_CONFIG.PLAYER.BLACK;
+        this.isGameOver = result.isGameOver || false;
+        this.winner = result.winner || GAME_CONFIG.PLAYER.NONE;
+
+        // 自动调整棋盘大小
+        if (this.board?.length > 0) {
+            const loadedBoardSize = this.board.length;
+            if (loadedBoardSize !== this.boardSize) {
+                this.boardSize = loadedBoardSize;
+                this.elements.boardSize.value = loadedBoardSize;
+                this.createBoard();
+            }
+        }
+
+        this.updateBoard();
+        this.updateGameInfo();
+    }
+
+    /**
+     * 执行落子操作
      */
     async makeMove(row, col) {
         if (this.isGameOver) {
@@ -286,17 +313,14 @@ class GomokuGame {
             return;
         }
 
-        if (this.board[row] && this.board[row][col] !== 0) {
+        if (this.board[row]?.[col] !== 0) {
             this.showMessage('该位置已有棋子，请选择其他位置！', 'warning');
             return;
         }
 
         try {
-            const response = await fetch(`/api/gomoku/${this.gameId}`, {
+            const result = await this.apiRequest(`/api/gomoku/${this.gameId}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
                 body: JSON.stringify({
                     x: row,
                     y: col,
@@ -304,24 +328,9 @@ class GomokuGame {
                 })
             });
 
-            const result = await response.json();
-
             if (result.code === 0) {
-                // 落子成功后重新加载游戏状态以获取最新的游戏结果
                 await this.loadGame();
-
-                // 检查游戏是否结束，如果结束则显示相应消息
-                if (this.isGameOver) {
-                    if (this.winner === 2) {
-                        this.showMessage('游戏结束，平局！', 'info');
-                    } else if (this.winner === 1) {
-                        this.showMessage('游戏结束，黑棋获胜！', 'success');
-                    } else if (this.winner === -1) {
-                        this.showMessage('游戏结束，白棋获胜！', 'success');
-                    }
-                } else {
-                    this.showMessage(`${this.getPlayerName(this.nextPlayer === 1 ? -1 : 1)} 落子成功！`, 'success');
-                }
+                this.handleMoveResult();
             } else {
                 this.showMessage(`落子失败: ${result.msg}`, 'error');
             }
@@ -331,28 +340,39 @@ class GomokuGame {
     }
 
     /**
-     * 更新棋盘显示：根据 this.gameBoard 渲染棋子（响应式版本）
+     * 处理落子结果
+     */
+    handleMoveResult() {
+        if (this.isGameOver) {
+            const messages = {
+                [GAME_CONFIG.PLAYER.DRAW]: '游戏结束，平局！',
+                [GAME_CONFIG.PLAYER.BLACK]: '游戏结束，黑棋获胜！',
+                [GAME_CONFIG.PLAYER.WHITE]: '游戏结束，白棋获胜！'
+            };
+            this.showMessage(messages[this.winner] || '游戏结束！', 'success');
+        } else {
+            const previousPlayer = this.nextPlayer === GAME_CONFIG.PLAYER.BLACK ? GAME_CONFIG.PLAYER.WHITE : GAME_CONFIG.PLAYER.BLACK;
+            this.showMessage(`${this.getPlayerName(previousPlayer)} 落子成功！`, 'success');
+        }
+    }
+
+    /**
+     * 更新棋盘显示
      */
     updateBoard() {
         const cells = document.querySelectorAll('.cell');
-        const pieceSize = this.getResponsivePieceSize(this.getResponsiveCellSize());
+        const sizes = this.calculateResponsiveSizes();
 
         cells.forEach(cell => {
             const row = parseInt(cell.dataset.row);
             const col = parseInt(cell.dataset.col);
 
             // 清除现有棋子
-            const existingPiece = cell.querySelector('.piece');
-            if (existingPiece) {
-                existingPiece.remove();
-            }
+            cell.querySelector('.piece')?.remove();
 
-            // 根据棋盘状态添加棋子
-            if (this.board[row] && this.board[row][col] !== 0) {
-                const piece = document.createElement('div');
-                piece.className = `piece ${this.board[row][col] === 1 ? 'black' : 'white'} responsive`;
-                piece.style.width = pieceSize + 'px';
-                piece.style.height = pieceSize + 'px';
+            // 添加新棋子
+            if (this.board[row]?.[col] !== 0) {
+                const piece = this.createPiece(this.board[row][col], sizes.pieceSize);
                 cell.appendChild(piece);
                 cell.classList.add('disabled');
             } else {
@@ -362,58 +382,58 @@ class GomokuGame {
     }
 
     /**
-     * 更新游戏信息面板：当前玩家和游戏结果
+     * 创建棋子元素
+     */
+    createPiece(player, size) {
+        const piece = document.createElement('div');
+        const pieceType = player === GAME_CONFIG.PLAYER.BLACK ? 'black' : 'white';
+        piece.className = `piece ${pieceType} responsive`;
+        piece.style.width = piece.style.height = size + 'px';
+        return piece;
+    }
+
+    /**
+     * 更新游戏信息面板
      */
     updateGameInfo() {
-        const currentPlayerElement = document.getElementById('currentPlayer');
-        const gameStatusElement = document.getElementById('gameStatus');
-
         if (this.isGameOver) {
-            // 游戏结束，显示获胜者（从后端获取）
-            if (this.winner === 2) {
-                currentPlayerElement.textContent = '平局';
-                gameStatusElement.textContent = '游戏平局';
-                this.showVictoryModal(2);
-            } else if (this.winner === 1) {
-                currentPlayerElement.textContent = '黑棋';
-                gameStatusElement.textContent = '黑棋获胜！';
-                this.showVictoryModal(1);
-            } else if (this.winner === -1) {
-                currentPlayerElement.textContent = '白棋';
-                gameStatusElement.textContent = '白棋获胜！';
-                this.showVictoryModal(-1);
-            } else {
-                // 游戏结束但没有获胜者信息
-                currentPlayerElement.textContent = '未知';
-                gameStatusElement.textContent = '游戏结束';
-            }
+            this.updateGameEndInfo();
         } else {
-            // 游戏进行中，显示当前玩家
-            currentPlayerElement.textContent = this.getPlayerName(this.nextPlayer);
-            gameStatusElement.textContent = '进行中';
+            this.elements.currentPlayer.textContent = this.getPlayerName(this.nextPlayer);
+            this.elements.gameStatus.textContent = '进行中';
         }
     }
 
     /**
-     * 根据玩家值返回名称：1 -> 黑棋，-1 -> 白棋
-     * @param {number} player 玩家标识
-     * @returns {string}
+     * 更新游戏结束信息
      */
-    getPlayerName(player) {
-        return player === 1 ? '黑棋' : '白棋';
+    updateGameEndInfo() {
+        const winnerMessages = {
+            [GAME_CONFIG.PLAYER.DRAW]: { player: '平局', status: '游戏平局' },
+            [GAME_CONFIG.PLAYER.BLACK]: { player: '黑棋', status: '黑棋获胜！' },
+            [GAME_CONFIG.PLAYER.WHITE]: { player: '白棋', status: '白棋获胜！' }
+        };
+
+        const info = winnerMessages[this.winner] || { player: '未知', status: '游戏结束' };
+        this.elements.currentPlayer.textContent = info.player;
+        this.elements.gameStatus.textContent = info.status;
+        this.showVictoryModal(this.winner);
     }
 
     /**
-     * 重置游戏：先删除再创建，并提示用户
+     * 获取玩家名称
+     */
+    getPlayerName(player) {
+        return player === GAME_CONFIG.PLAYER.BLACK ? '黑棋' : '白棋';
+    }
+
+    /**
+     * 重置游戏
      */
     async resetGame() {
         try {
-            // 先删除当前游戏
             await this.deleteGame(false);
-
-            // 然后创建新游戏
             await this.createGame();
-
             this.showMessage('游戏重置成功！', 'success');
         } catch (error) {
             this.showMessage(`重置游戏时发生错误: ${error.message}`, 'error');
@@ -421,28 +441,16 @@ class GomokuGame {
     }
 
     /**
-     * 删除当前游戏：调用DELETE接口，重置本地状态
-     * @param {boolean} showMessage 是否显示提示消息
+     * 删除游戏
      */
     async deleteGame(showMessage = true) {
         try {
-            const response = await fetch(`/api/gomoku/${this.gameId}`, {
+            const result = await this.apiRequest(`/api/gomoku/${this.gameId}`, {
                 method: 'DELETE'
             });
 
-            const result = await response.json();
-
             if (result.code === 0) {
-                // 重置游戏状态
-                this.board = [];
-                this.nextPlayer = 1;
-                this.isGameOver = false;
-                this.winner = null;
-
-                // 清空棋盘显示
-                this.createBoard();
-                this.updateGameInfo();
-
+                this.resetLocalState();
                 if (showMessage) {
                     this.showMessage(`游戏 ${this.gameId} 删除成功！`, 'success');
                 }
@@ -459,57 +467,59 @@ class GomokuGame {
     }
 
     /**
-     * 显示提示消息，并在3秒后自动清除
-     * @param {string} message 要显示的文本
-     * @param {string} type 消息类型: 'success','error','warning','info'
+     * 重置本地游戏状态
+     */
+    resetLocalState() {
+        this.board = [];
+        this.nextPlayer = GAME_CONFIG.PLAYER.BLACK;
+        this.isGameOver = false;
+        this.winner = GAME_CONFIG.PLAYER.NONE;
+        this.createBoard();
+        this.updateGameInfo();
+    }
+
+    /**
+     * 显示提示消息
      */
     showMessage(message, type = 'info') {
-        const messageBox = document.getElementById('messageBox');
-        messageBox.textContent = message;
-        messageBox.className = `message-box ${type}`;
+        this.elements.messageBox.textContent = message;
+        this.elements.messageBox.className = `message-box ${type}`;
 
-        // 3秒后清除消息
         setTimeout(() => {
-            if (messageBox.textContent === message) {
-                messageBox.textContent = '';
-                messageBox.className = 'message-box';
+            if (this.elements.messageBox.textContent === message) {
+                this.elements.messageBox.textContent = '';
+                this.elements.messageBox.className = 'message-box';
             }
-        }, 3000);
+        }, GAME_CONFIG.MESSAGE_TIMEOUT);
     }
 
     /**
      * 显示胜利弹窗
-     * @param {number} winner 胜利者标识: 1=黑棋获胜, -1=白棋获胜, 2=平局
      */
     showVictoryModal(winner) {
-        const modal = document.getElementById('victoryModal');
-        const titleElement = document.getElementById('victoryTitle');
-        const messageElement = document.getElementById('victoryMessage');
+        const modalMessages = {
+            [GAME_CONFIG.PLAYER.DRAW]: { title: '游戏平局', message: '棋盘已满，本局平局！' },
+            [GAME_CONFIG.PLAYER.BLACK]: { title: '黑棋获胜！', message: '恭喜黑方玩家获得胜利！' },
+            [GAME_CONFIG.PLAYER.WHITE]: { title: '白棋获胜！', message: '恭喜白方玩家获得胜利！' }
+        };
 
-        if (winner === 2) {
-            titleElement.textContent = '游戏平局';
-            messageElement.textContent = '棋盘已满，本局平局！';
-        } else if (winner === 1) {
-            titleElement.textContent = '黑棋获胜！';
-            messageElement.textContent = '恭喜黑方玩家获得胜利！';
-        } else if (winner === -1){
-            titleElement.textContent = '白棋获胜！';
-            messageElement.textContent = '恭喜白方玩家获得胜利！';
+        const info = modalMessages[winner];
+        if (info) {
+            this.elements.victoryTitle.textContent = info.title;
+            this.elements.victoryMessage.textContent = info.message;
+            this.elements.victoryModal.classList.add('show');
         }
-
-        modal.classList.add('show');
     }
 
     /**
      * 隐藏胜利弹窗
      */
     hideVictoryModal() {
-        const modal = document.getElementById('victoryModal');
-        modal.classList.remove('show');
+        this.elements.victoryModal.classList.remove('show');
     }
 
     /**
-     * 开始新游戏：隐藏胜利弹窗，重置游戏状态
+     * 开始新游戏
      */
     async startNewGame() {
         this.hideVictoryModal();
