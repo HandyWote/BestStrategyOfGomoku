@@ -1,24 +1,31 @@
 // 游戏配置常量
 const GAME_CONFIG = {
-    MIN_BOARD_SIZE: 5,
-    MAX_BOARD_SIZE: 25,
-    DEFAULT_BOARD_SIZE: 9,
-    MIN_CELL_SIZE: 15,
-    MAX_CELL_SIZE: 50,
-    MAX_BOARD_DISPLAY_SIZE: 600,
-    MOBILE_BREAKPOINT: 768,
-    MESSAGE_TIMEOUT: 3000,
+    // 棋盘尺寸限制
+    MIN_BOARD_SIZE: 5,        // 最小棋盘大小（5×5）
+    MAX_BOARD_SIZE: 25,       // 最大棋盘大小（25×25）
+    DEFAULT_BOARD_SIZE: 9,    // 默认棋盘大小（9×9）
+
+    // 单元格尺寸限制
+    MIN_CELL_SIZE: 15,        // 最小单元格尺寸（像素）
+    MAX_CELL_SIZE: 50,        // 最大单元格尺寸（像素）
+
+    // 显示限制
+    MAX_BOARD_DISPLAY_SIZE: 600,  // 棋盘最大显示尺寸（像素）
+    MOBILE_BREAKPOINT: 768,       // 移动端屏幕宽度断点（像素）
+
+    // 交互设置
+    MESSAGE_TIMEOUT: 3000,    // 消息显示超时时间（毫秒）
 
     // 尺寸比例
-    BUTTON_SIZE_RATIO: 0.8,
-    PIECE_SIZE_RATIO: 0.7,
+    BUTTON_SIZE_RATIO: 0.8,   // 交点按钮相对于单元格的尺寸比例
+    PIECE_SIZE_RATIO: 0.7,    // 棋子相对于单元格的尺寸比例
 
     // 玩家标识
     PLAYER: {
-        BLACK: 1,
-        WHITE: -1,
-        DRAW: 2,
-        NONE: 0
+        BLACK: 1,             // 黑棋玩家标识
+        WHITE: -1,            // 白棋玩家标识
+        DRAW: 2,              // 平局标识
+        NONE: 0               // 无玩家/空位标识
     }
 };
 
@@ -536,3 +543,4 @@ class GomokuGame {
 document.addEventListener('DOMContentLoaded', () => {
     new GomokuGame();
 });
+
