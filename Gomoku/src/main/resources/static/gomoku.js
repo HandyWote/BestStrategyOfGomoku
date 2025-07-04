@@ -363,6 +363,11 @@ class GomokuGame {
 
         this.updateBoard();
         this.updateGameInfo();
+
+        // 游戏结束后停止刷新
+        if (this.isGameOver) {
+            this.stopRefresh();
+        }
     }
 
     /**
