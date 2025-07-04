@@ -15,6 +15,7 @@ const GAME_CONFIG = {
 
     // 交互设置
     MESSAGE_TIMEOUT: 3000,    // 消息显示超时时间（毫秒）
+    REFRESH_INTERVAL: 1000,   // 棋盘刷新间隔时间（毫秒）
 
     // 尺寸比例
     BUTTON_SIZE_RATIO: 0.8,   // 交点按钮相对于单元格的尺寸比例
@@ -40,6 +41,7 @@ class GomokuGame {
         this.winner = GAME_CONFIG.PLAYER.NONE;
         this.msg = null;
         this.gameExists = false; // 添加游戏存在标志
+        this.refreshTimer = null; // 添加刷新定时器
 
         // 缓存DOM元素
         this.elements = this.cacheElements();
@@ -248,6 +250,31 @@ class GomokuGame {
     }
 
     /**
+     * 开始定时刷新棋盘
+     */
+    startRefresh() {
+        if (this.refreshTimer) {
+            clearInterval(this.refreshTimer);
+        }
+
+        this.refreshTimer = setInterval(() => {
+            if (this.gameExists) {
+                this.loadGame();
+            }
+        }, GAME_CONFIG.REFRESH_INTERVAL);
+    }
+
+    /**
+     * 停止定时刷新棋盘
+     */
+    stopRefresh() {
+        if (this.refreshTimer) {
+            clearInterval(this.refreshTimer);
+            this.refreshTimer = null;
+        }
+    }
+
+    /**
      * 创建游戏
      */
     async createGame() {
@@ -267,13 +294,16 @@ class GomokuGame {
                 this.gameExists = true; // 根据code判断游戏创建成功
                 this.showMessage(`游戏 ${this.gameId} (${this.boardSize}x${this.boardSize}) 创建成功！`, 'success');
                 await this.loadGame();
+                this.startRefresh(); // 开始定时刷新
             } else {
                 this.gameExists = false; // 根据code判断游戏创建失败
                 this.showMessage(`创建游戏失败: ${result.msg}`, 'error');
+                this.stopRefresh(); // 停止定时刷新
             }
         } catch (error) {
             this.gameExists = false; // 网络错误时标记游戏不存在
             this.showMessage(`创建游戏时发生错误: ${error.message}`, 'error');
+            this.stopRefresh(); // 停止定时刷新
         }
     }
 
@@ -289,14 +319,26 @@ class GomokuGame {
             if (result.code === 0) {
                 this.gameExists = true; // 根据code判断游戏加载成功
                 this.updateGameState(result);
-                this.showMessage(`游戏 ${this.gameId} (${this.boardSize}x${this.boardSize}) 加载成功！`, 'success');
+                // 只在手动加载时显示消息，避免定时刷新时频繁显示
+                if (!this.refreshTimer) {
+                    this.showMessage(`游戏 ${this.gameId} (${this.boardSize}x${this.boardSize}) 加载成功！`, 'success');
+                }
+                // 如果游戏存在但没有开始刷新，则开始刷新
+                if (!this.refreshTimer) {
+                    this.startRefresh();
+                }
             } else {
                 this.gameExists = false; // 根据code判断游戏不存在
                 this.showMessage(`加载游戏失败: ${result.msg || '棋盘不存在，请先创建游戏！'}`, 'error');
+                this.stopRefresh(); // 停止定时刷新
             }
         } catch (error) {
             this.gameExists = false; // 网络错误时标记游戏不存在
-            this.showMessage(`加载游戏时发生错误: ${error.message}`, 'error');
+            // 只在手动加载时显示错误消息，避免定时刷新时频繁显示
+            if (!this.refreshTimer) {
+                this.showMessage(`加载游戏时发生错误: ${error.message}`, 'error');
+            }
+            this.stopRefresh(); // 停止定时刷新
         }
     }
 
@@ -483,6 +525,7 @@ class GomokuGame {
 
             if (result.code === 0) {
                 this.gameExists = false; // 根据code判断游戏删除成功
+                this.stopRefresh(); // 停止定时刷新
                 this.resetLocalState();
                 if (showMessage) {
                     this.showMessage(`游戏 ${this.gameId} 删除成功！`, 'success');
@@ -509,6 +552,7 @@ class GomokuGame {
         this.isGameOver = false;
         this.winner = GAME_CONFIG.PLAYER.NONE;
         this.gameExists = false; // 重置游戏存在标志
+        this.stopRefresh(); // 停止定时刷新
         this.createBoard();
         this.updateGameInfo();
     }
@@ -564,5 +608,10 @@ class GomokuGame {
 
 // 页面加载完成后实例化游戏
 document.addEventListener('DOMContentLoaded', () => {
-    new GomokuGame();
+    const game = new GomokuGame();
+
+    // 页面卸载时清理定时器
+    window.addEventListener('beforeunload', () => {
+        game.stopRefresh();
+    });
 });
