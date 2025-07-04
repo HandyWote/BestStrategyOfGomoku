@@ -324,7 +324,7 @@ class GomokuGame {
                     this.showMessage(`游戏 ${this.gameId} (${this.boardSize}x${this.boardSize}) 加载成功！`, 'success');
                 }
                 // 如果游戏存在但没有开始刷新，则开始刷新
-                if (!this.refreshTimer) {
+                if (!this.refreshTimer && !this.isGameOver) {
                     this.startRefresh();
                 }
             } else {
@@ -363,11 +363,6 @@ class GomokuGame {
 
         this.updateBoard();
         this.updateGameInfo();
-
-        // 游戏结束后停止刷新
-        if (this.isGameOver) {
-            this.stopRefresh();
-        }
     }
 
     /**
@@ -476,6 +471,7 @@ class GomokuGame {
      */
     updateGameInfo() {
         if (this.isGameOver) {
+            this.stopRefresh();
             this.updateGameEndInfo();
         } else {
             this.elements.currentPlayer.textContent = this.getPlayerName(this.nextPlayer);
