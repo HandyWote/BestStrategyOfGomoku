@@ -39,6 +39,7 @@ class GomokuGame {
         this.isGameOver = false;
         this.winner = GAME_CONFIG.PLAYER.NONE;
         this.msg = null;
+        this.gameExists = false; // 添加游戏存在标志
 
         // 缓存DOM元素
         this.elements = this.cacheElements();
@@ -69,7 +70,7 @@ class GomokuGame {
     init() {
         this.bindEvents();
         this.createBoard();
-        this.showMessage('欢迎来到五子棋游戏！选择棋盘大小后点击"创建游戏"开始新游戏。', 'info');
+        this.showMessage('欢迎来到五子棋游戏！请先创建游戏才能开始对弈。', 'info');
 
         window.addEventListener('resize', () => this.createBoard());
     }
@@ -263,12 +264,15 @@ class GomokuGame {
             });
 
             if (result.code === 0) {
+                this.gameExists = true; // 根据code判断游戏创建成功
                 this.showMessage(`游戏 ${this.gameId} (${this.boardSize}x${this.boardSize}) 创建成功！`, 'success');
                 await this.loadGame();
             } else {
+                this.gameExists = false; // 根据code判断游戏创建失败
                 this.showMessage(`创建游戏失败: ${result.msg}`, 'error');
             }
         } catch (error) {
+            this.gameExists = false; // 网络错误时标记游戏不存在
             this.showMessage(`创建游戏时发生错误: ${error.message}`, 'error');
         }
     }
@@ -283,12 +287,15 @@ class GomokuGame {
             const result = await this.apiRequest(`/api/gomoku/${this.gameId}?showStatus=true`);
 
             if (result.code === 0) {
+                this.gameExists = true; // 根据code判断游戏加载成功
                 this.updateGameState(result);
                 this.showMessage(`游戏 ${this.gameId} (${this.boardSize}x${this.boardSize}) 加载成功！`, 'success');
             } else {
-                this.showMessage(`加载游戏失败: ${result.msg}`, 'error');
+                this.gameExists = false; // 根据code判断游戏不存在
+                this.showMessage(`加载游戏失败: ${result.msg || '棋盘不存在，请先创建游戏！'}`, 'error');
             }
         } catch (error) {
+            this.gameExists = false; // 网络错误时标记游戏不存在
             this.showMessage(`加载游戏时发生错误: ${error.message}`, 'error');
         }
     }
@@ -320,6 +327,12 @@ class GomokuGame {
      * 执行落子操作
      */
     async makeMove(row, col) {
+        // 检查游戏是否存在
+        if (!this.gameExists) {
+            this.showMessage('棋盘不存在，请先创建游戏！', 'warning');
+            return;
+        }
+
         if (this.isGameOver) {
             this.showMessage('游戏已结束，请重新开始或创建新游戏！', 'warning');
             return;
@@ -341,10 +354,17 @@ class GomokuGame {
             });
 
             if (result.code === 0) {
+                // 根据code判断落子成功
                 await this.loadGame();
                 this.handleMoveResult();
             } else {
-                this.showMessage(`落子失败: ${result.msg}`, 'error');
+                // 根据code判断落子失败，可能是棋盘不存在
+                if (result.msg && result.msg.includes('棋盘不存在')) {
+                    this.gameExists = false;
+                    this.showMessage('棋盘不存在，请先创建游戏！', 'error');
+                } else {
+                    this.showMessage(`落子失败: ${result.msg}`, 'error');
+                }
             }
         } catch (error) {
             this.showMessage(`落子时发生错误: ${error.message}`, 'error');
@@ -462,11 +482,13 @@ class GomokuGame {
             });
 
             if (result.code === 0) {
+                this.gameExists = false; // 根据code判断游戏删除成功
                 this.resetLocalState();
                 if (showMessage) {
                     this.showMessage(`游戏 ${this.gameId} 删除成功！`, 'success');
                 }
             } else {
+                // 根据code判断删除失败
                 if (showMessage) {
                     this.showMessage(`删除游戏失败: ${result.msg}`, 'error');
                 }
@@ -486,6 +508,7 @@ class GomokuGame {
         this.nextPlayer = GAME_CONFIG.PLAYER.BLACK;
         this.isGameOver = false;
         this.winner = GAME_CONFIG.PLAYER.NONE;
+        this.gameExists = false; // 重置游戏存在标志
         this.createBoard();
         this.updateGameInfo();
     }
@@ -543,4 +566,3 @@ class GomokuGame {
 document.addEventListener('DOMContentLoaded', () => {
     new GomokuGame();
 });
-
