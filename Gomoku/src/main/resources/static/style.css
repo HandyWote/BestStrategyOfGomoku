@@ -1,0 +1,655 @@
+/* 重置样式和基础设置 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* 定义CSS自定义属性的默认值 */
+:root {
+    --cell-size: 30px;
+    --button-size: 24px;
+    --piece-size: 20px;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segui UI', 'Microsoft YaHei', sans-serif;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    min-height: 100vh;
+    color: #333;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 主要内容区域 - 三栏布局 */
+.main-content {
+    display: flex;
+    gap: 30px;
+    flex: 1;
+    align-items: flex-start;
+}
+
+/* 左侧控制面板 */
+.control-panel {
+    width: 280px;
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    height: fit-content;
+}
+
+/* 右侧状态面板 */
+.status-panel {
+    width: 280px;
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    height: fit-content;
+}
+
+.control-section {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #ecf0f1;
+}
+
+.control-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+/* 输入组 */
+.input-group {
+    margin-bottom: 16px;
+}
+
+.input-group label {
+    display: block;
+    font-weight: 600;
+    color: #34495e;
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #ecf0f1;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    background: #fafbfc;
+}
+
+.input-group input:focus {
+    outline: none;
+    border-color: #3498db;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+/* 按钮组 */
+.button-group {
+    display: flex;
+    gap: 10px;
+    flex-direction: column;
+}
+
+.btn {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: #3498db;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #2980b9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+.btn-secondary {
+    background: #95a5a6;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #7f8c8d;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(149, 165, 166, 0.3);
+}
+
+.btn-restart {
+    background: #e67e22;
+    color: white;
+}
+
+.btn-restart:hover {
+    background: #d35400;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(230, 126, 34, 0.3);
+}
+
+.btn-delete {
+    background: #e74c3c;
+    color: white;
+}
+
+.btn-delete:hover {
+    background: #c0392b;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+}
+
+/* 状态区域 */
+.status-section {
+    margin-bottom: 30px;
+}
+
+.status-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding: 16px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border-left: 4px solid #3498db;
+}
+
+.status-icon {
+    font-size: 1.2rem;
+    margin-top: 2px;
+}
+
+.status-content h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 8px;
+}
+
+/* 玩家信息 */
+.player-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.player-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: #7f8c8d;
+}
+
+.current-turn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #ecf0f1;
+}
+
+.current-piece {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #2c3e50;
+    border: 1px solid #34495e;
+}
+
+.game-result {
+    font-weight: 600;
+    color: #3498db;
+    font-size: 1rem;
+}
+
+/* 动作按钮区域 */
+.action-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* 中间棋盘区域 */
+.board-area {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: white;
+    border-radius: 16px;
+    padding: 40px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    min-height: 600px;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.game-board {
+    background: #deb887;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
+    position: relative;
+    max-width: 100%;
+    max-height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.board-grid {
+    position: relative;
+    display: inline-block;
+    background: #deb887;
+}
+
+/* 网格线样式 */
+.board-grid::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image:
+        linear-gradient(to right, #8b4513 1px, transparent 1px),
+        linear-gradient(to bottom, #8b4513 1px, transparent 1px);
+    background-size: var(--cell-size, 30px) var(--cell-size, 30px);
+    background-position: 0 0;
+    pointer-events: none;
+    z-index: 1;
+    border-right: 1px solid #8b4513;
+    border-bottom: 1px solid #8b4513;
+}
+
+.cell {
+    position: absolute;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    z-index: 2;
+}
+
+/* 响应式交点按钮 */
+.cell.responsive {
+    width: var(--button-size, 24px);
+    height: var(--button-size, 24px);
+}
+
+.cell:hover {
+    background: rgba(52, 152, 219, 0.2);
+    transform: scale(1.1);
+}
+
+.cell.disabled {
+    cursor: not-allowed;
+}
+
+.cell.disabled:hover {
+    background: transparent;
+    transform: none;
+}
+
+/* 棋子样式 */
+.piece {
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    z-index: 3;
+}
+
+/* 响应式棋子 */
+.piece.responsive {
+    width: var(--piece-size, 20px);
+    height: var(--piece-size, 20px);
+}
+
+.piece.black {
+    background: radial-gradient(circle at 30% 30%, #4a4a4a, #1a1a1a);
+    border: 1px solid #333;
+}
+
+.piece.white {
+    background: radial-gradient(circle at 30% 30%, #ffffff, #e8e8e8);
+    border: 1px solid #ccc;
+}
+
+/* 消息区域 - 右上角弹窗 */
+.message-area {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    max-width: 400px;
+    pointer-events: none;
+}
+
+.message-box {
+    padding: 16px 20px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    margin-bottom: 10px;
+    transition: all 0.3s ease;
+    pointer-events: auto;
+    opacity: 0;
+    transform: translateX(100%);
+}
+
+.message-box:not(:empty) {
+    background: white;
+    border-left: 4px solid #3498db;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.message-box.success {
+    border-left-color: #27ae60;
+    color: #155724;
+    background-color: #d4edda;
+}
+
+.message-box.error {
+    border-left-color: #e74c3c;
+    color: #721c24;
+    background-color: #f8d7da;
+}
+
+.message-box.info {
+    border-left-color: #3498db;
+    color: #0c5460;
+    background-color: #d1ecf1;
+}
+
+.message-box.warning {
+    border-left-color: #f39c12;
+    color: #856404;
+    background-color: #fff3cd;
+}
+
+/* 胜利弹窗样式 */
+.victory-modal {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.victory-modal.show {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.victory-modal-content {
+    background: white;
+    border-radius: 8px;
+    padding: 30px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    max-width: 300px;
+    width: 90%;
+    border: 2px solid #3498db;
+}
+
+.victory-modal h2 {
+    color: #2c3e50;
+    font-size: 1.5rem;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.victory-modal p {
+    color: #34495e;
+    font-size: 1rem;
+    margin-bottom: 25px;
+}
+
+.victory-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.victory-buttons .btn {
+    min-width: 80px;
+    padding: 10px 16px;
+    font-size: 0.9rem;
+    border-radius: 6px;
+}
+
+/* 移动端标题 - 默认隐藏 */
+.mobile-header {
+    display: none;
+    text-align: center;
+    padding: 20px 10px 10px;
+    background: white;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.mobile-header h1 {
+    font-size: 1.5rem;
+    color: #2c3e50;
+    font-weight: 600;
+    margin: 0;
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+    .main-content {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .control-panel,
+    .status-panel {
+        width: 100%;
+        max-width: 600px;
+        margin-bottom: 20px;
+    }
+
+    .board-area {
+        width: 100%;
+        min-height: 400px;
+    }
+
+    .control-section {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        align-items: start;
+    }
+
+    .button-group {
+        flex-direction: row;
+    }
+
+    .action-section {
+        flex-direction: row;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 768px) {
+    /* 显示移动端标题 */
+    .mobile-header {
+        display: block;
+    }
+
+    /* 调整主内容区域为移动端优化的顺序 */
+    .main-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    /* 确保棋盘在移动端显示在最前面 */
+    .board-area {
+        order: -1;
+        width: 100%;
+        min-height: 300px;
+        margin-bottom: 20px;
+        /* 减少内边距以给棋盘更多空间 */
+        padding: 10px;
+    }
+
+    .control-panel {
+        order: 1;
+        margin-bottom: 20px;
+    }
+
+    .status-panel {
+        order: 2;
+        margin-bottom: 20px;
+    }
+
+    .container {
+        padding: 10px;
+    }
+
+    .control-panel,
+    .status-panel {
+        padding: 20px;
+    }
+
+    .board-area {
+        padding: 15px;
+    }
+
+    .game-board {
+        /* 减少内边距以给棋盘更多空间 */
+        padding: 10px;
+        /* 确保棋盘居中显示 */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    /* 移动端确保棋盘不会超出屏幕 */
+    .board-grid.responsive {
+        /* 移除最大宽度限制，让棋盘可以占满屏幕宽度 */
+        max-width: calc(100vw - 30px);
+        max-height: calc(100vh - 250px);
+        /* 确保棋盘在容器内居中 */
+        margin: 0 auto;
+    }
+
+    .button-group,
+    .action-section {
+        flex-direction: column;
+    }
+
+    /* 移动端调整消息弹窗 */
+    .message-area {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
+    }
+
+    /* 移动端胜利弹窗调整 */
+    .victory-modal-content {
+        padding: 25px 20px;
+        margin: 20px;
+    }
+
+    .victory-buttons {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .victory-buttons .btn {
+        width: 100%;
+    }
+
+    /* 移动端标题样式优化 */
+    .mobile-header h1 {
+        font-size: 1.3rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+}
+
+/* 超小屏幕优化 */
+@media (max-width: 480px) {
+    .mobile-header {
+        padding: 15px 10px 8px;
+        margin-bottom: 15px;
+    }
+
+    .mobile-header h1 {
+        font-size: 1.2rem;
+    }
+
+    .board-area {
+        /* 进一步减少内边距 */
+        padding: 8px;
+        min-height: 250px;
+    }
+
+    .game-board {
+        /* 进一步减少内边距 */
+        padding: 8px;
+    }
+
+    .board-grid.responsive {
+        /* 超小屏幕下给棋盘更多空间 */
+        max-width: calc(100vw - 25px);
+        max-height: calc(100vh - 200px);
+    }
+}
+
+/* 页脚 */
+.footer {
+    text-align: center;
+    margin-top: 30px;
+    padding: 20px;
+    color: #7f8c8d;
+    font-size: 0.9rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}

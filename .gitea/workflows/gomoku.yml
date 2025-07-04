@@ -1,0 +1,54 @@
+name: Java CI
+
+on:
+  push:
+    branches: [ Game ]
+  pull_request:
+    branches: [ Game ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Build with Gradle
+        run: |
+          cd Gomoku
+          ./gradlew build --info --build-cache --parallel
+      - name: 新建 README.md & 复制 游戏本体使用介绍.md
+        run: |
+          cp 游戏本体使用介绍.md Gomoku/
+          cat > Gomoku/README.md <<'EOF'
+          ## 直接运行程序
+            1. 解压缩所有文件在同一文件夹中
+            2. 打开终端，进入到解压目录下，运行以下命令：
+            ```
+            cd build/libs
+            java -jar Gomoku-0.0.1-SNAPSHOT.jar
+            ```
+          ## 使用Docker Compose运行程序
+          1. 请确保已安装Docker和Docker Compose
+          2. 然后解压缩所有文件在同一文件夹中
+          3. 按需求修改Dockerfile与docker-compose.yml文件（默认端口10086）
+          4. 打开终端，进入到解压目录下，运行以下命令启动服务：
+          ```
+          docker-compose up --build
+          ```
+          EOF
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v3
+        with:
+          name: gomoku-jars
+          path: |
+            Gomoku/build/libs/*.jar
+            Gomoku/Dockerfile
+            Gomoku/docker-compose.yml
+            Gomoku/README.md
+            Gomoku/游戏本体使用介绍.md
+
