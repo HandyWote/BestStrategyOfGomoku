@@ -53,3 +53,5 @@ coverage/
 *.tmp
 *.swp
 *~
+.promptx
+.idea
