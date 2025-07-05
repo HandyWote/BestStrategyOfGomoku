@@ -4,5 +4,5 @@ services:
     build: .
     image: gomoku:latest
     ports:
-      - "10086:10086"
+      - "3214:10086"
     container_name: gomoku-app
