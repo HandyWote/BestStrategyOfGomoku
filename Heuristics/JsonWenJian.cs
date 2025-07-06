@@ -22,12 +22,15 @@ public class JsonWenJian
         int num = a;
         string json;
         int[,] broad = new int[10, 10];
-        string filePath = fn;
-        if (File.Exists(filePath))
-        {
             JsonWenJian p = new JsonWenJian();
-            json = File.ReadAllText(filePath);
-            for (int i = 0; i < json.Length; i++)
+            json = fn;
+        int i = 0;
+        while (json[i] != '[')
+        {
+            i++;
+        }
+        char c = json[i];
+            for ( ; i < json.Length; i++)
             {
                 if (json[i] != ',' && json[i] != '[' && json[i] != ']')
                 {
@@ -50,7 +53,6 @@ public class JsonWenJian
 
                 }
             }
-        }
         return broad;
     }
 
