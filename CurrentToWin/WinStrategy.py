@@ -2,15 +2,14 @@ import numpy as np
 import json
 import tkinter as tk
 from tkinter import Label
-
-from CurrentToWin import WinningPart
+from WinningPart import WINNING_PATTERNS
 
 
 class WinStrategy:
     def __init__(self):
         self.board = np.zeros((9, 9), dtype=int)
         self.player = 1  # 1:黑棋, -1:白棋
-        self.WINNING_PATTERNS = WinningPart # 这里假设为空，实际使用时需要填充
+        self.WINNING_PATTERNS = WINNING_PATTERNS
         self.THREAT_PATTERNS = {
             1: {"冲四": ["011110"], "活四": ["011112", "211110"], "活三": ["011100", "001110"]},
             -1: {"反四": ["211112"], "反三": ["211100", "001112"], "禁手": ["11112", "21111"]}
@@ -58,6 +57,22 @@ class WinStrategy:
 
     def generate_move(self):
         """改进版决策逻辑，增加前瞻性分析"""
+        # 1. 优先匹配阵法
+        move, reason = self.match_pattern()
+        if move:
+            return move, reason
+        # 只调用一次_scan_threats
+        threats = self._scan_threats(-self.player)
+        print("[DEBUG] generate_move调用_scan_threats后的威胁点:")
+        for t in threats:
+            print(f"[DEBUG] 威胁点: {t[0]}, 类型: {t[1]}, 优先级: {t[2]}")
+        if threats:
+            move, threat_type, priority = threats[0]
+            math_coords = self._convert_coords(move)
+            print(f"[DEBUG] 实际落子点: {move}, 数组坐标: {move}, 数学坐标: {math_coords}")
+            if priority >= 60:
+                return math_coords, f"防御对方[{threat_type}]"
+
         # 特殊情况：棋盘为空，黑棋首步天元
         if np.sum(np.abs(self.board)) == 0 and self.player == 1:
             return "5,5", "黑棋首步天元定式"
@@ -95,11 +110,14 @@ class WinStrategy:
                 return f"{math_x},{math_y}", f"防御对方[{opponent_threats[0][1]}]关键威胁"
 
         # 正常逻辑：先处理对手威胁
-        opponent_threats = self._scan_threats(-self.player)
+        opponent_threats = self._last_threats if hasattr(self, '_last_threats') else self._scan_threats(-self.player)
         if opponent_threats:
             move, threat_type, priority = opponent_threats[0]
+            print(f"[DEBUG] 最终选择的落子点: {move}, 类型: {threat_type}, 优先级: {priority}")
             if priority >= 60:  # 只处理高优先级威胁
-                return self._convert_coords(move), f"防御对方[{threat_type}]"
+                math_coords = self._convert_coords(move)
+                print(f"[DEBUG] 实际落子点: {move}, 数组坐标: {move}, 数学坐标: {math_coords}")
+                return math_coords, f"防御对方[{threat_type}]"
 
         # 再尝试主动进攻
         player_threats = self._scan_threats(self.player)
@@ -212,7 +230,7 @@ class WinStrategy:
         # 扩展威胁模式库，增加更多关键棋型
         EXTENDED_THREAT_PATTERNS = {
             1: {  # 黑棋威胁
-                "活四": ["011110"],  # 活四
+                "活四": ["011110", "101110", "110110", "111010"],  # 活四及其变体
                 "冲四": ["011112", "211110", "11110", "01111"],  # 冲四
                 "活三": ["011100", "001110", "010110", "011010"],  # 活三
                 "眠三": ["211100", "001112", "210110", "010112"],  # 眠三
@@ -255,23 +273,42 @@ class WinStrategy:
                     # 检查所有威胁模式
                     for threat_type, patterns in EXTENDED_THREAT_PATTERNS[1 if player == 1 else -1].items():
                         for pattern in patterns:
-                            if pattern in line_str:
-                                # 计算威胁等级
-                                priority = self._enhanced_threat_priority(threat_type, pattern, line_str)
-
-                                # 特殊处理关键位置(6,7) 对应数组坐标(2,5)
-                                if (r, c) == (2, 5):
-                                    priority += 5  # 大幅提升优先级
-
-                                # 特殊处理天元位置(5,5)
-                                if (r, c) == (4, 4):
-                                    priority += 2
-
-                                threats.append(((r, c), threat_type, priority))
-                                break  # 每个位置每个方向只记录最高威胁
+                            idx = line_str.find(pattern)
+                            while idx != -1:
+                                # 活三两端补子优先
+                                if threat_type == "活三":
+                                    left = idx - 1
+                                    right = idx + len(pattern)
+                                    # 左端
+                                    if left >= 0 and line_str[left] == '0' and line_str[left] != 'x' and line_str[idx:idx+len(pattern)] == pattern:
+                                        lr = r + (left - 4) * dr
+                                        lc = c + (left - 4) * dc
+                                        if 0 <= lr < 9 and 0 <= lc < 9 and self.board[lr][lc] == 0:
+                                            threats.append(((lr, lc), "活三端点", 80))
+                                    # 右端
+                                    if right < len(line_str) and line_str[right] == '0' and line_str[right] != 'x' and line_str[idx:idx+len(pattern)] == pattern:
+                                        lr = r + (right - 4) * dr
+                                        lc = c + (right - 4) * dc
+                                        if 0 <= lr < 9 and 0 <= lc < 9 and self.board[lr][lc] == 0:
+                                            threats.append(((lr, lc), "活三端点", 80))
+                                # 原有pattern中心点检测
+                                if pattern in line_str and line[4] == 0:  # 当前空位为中心
+                                    priority = self._enhanced_threat_priority(threat_type, pattern, line_str)
+                                    # 特殊处理关键位置(6,7) 对应数组坐标(2,5)
+                                    if (r, c) == (2, 5):
+                                        priority += 5  # 大幅提升优先级
+                                    # 特殊处理天元位置(5,5)
+                                    if (r, c) == (4, 4):
+                                        priority += 2
+                                    threats.append(((r, c), threat_type, priority))
+                                idx = line_str.find(pattern, idx + 1)
 
         # 按优先级排序，优先级相同则按坐标顺序
         threats.sort(key=lambda x: (-x[2], x[0][0], x[0][1]))
+        # 调试输出所有威胁点
+        for t in threats:
+            print(f"威胁点: {t[0]}, 类型: {t[1]}, 优先级: {t[2]}")
+        self._last_threats = threats  # 保存威胁点供后续调试
         return threats
 
     @staticmethod
