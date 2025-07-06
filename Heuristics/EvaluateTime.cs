@@ -60,17 +60,32 @@ public class EvaluateTime
 				x1 += dirctx[i]; y1 += dircty[i];
 				num++;
 			}
-			if(x1 + dirctx[i] >= 0 && x1 + dirctx[i] < 9 && y1 + dircty[i] >= 0 && y1 + dircty[i] < 9 &&broad[x1 + dirctx[i], y1 + dircty[i]] == -1)
+			if(x1 + dirctx[i] >= 0 && x1 + dirctx[i] < 9 && y1 + dircty[i] >= 0 && y1 + dircty[i] < 9)
 			{
-				zudang++;
+                if (broad[x1 + dirctx[i], y1 + dircty[i]] == -1)
+                {
+                    zudang++;
+                }
+
 			}
+            else
+            {
+                zudang++;
+            }
 			x1 = x; y1 = y;
             while (x1 + dirctx[i + 4] >= 0 && x1 + dirctx[i + 4] < 9 && y1 + dircty[i + 4] >= 0 && y1 + dircty[i + 4] < 9&&broad[x1 + dirctx[i+4], y1 + dircty[i+4]] == 1)
             {
                 x1 += dirctx[i+4]; y1 += dircty[i+4];
                 num++;
             }
-            if (x1 + dirctx[i + 4] >= 0 && x1 + dirctx[i + 4] < 9 && y1 + dircty[i + 4] >= 0 && y1 + dircty[i + 4] < 9 && broad[x1 + dirctx[i + 4], y1 + dircty[i + 4]] == -1)
+            if (x1 + dirctx[i + 4] >= 0 && x1 + dirctx[i + 4] < 9 && y1 + dircty[i + 4] >= 0 && y1 + dircty[i + 4] < 9)
+            {
+                if (broad[x1 + dirctx[i + 4], y1 + dircty[i + 4]] == -1)
+                {
+                    zudang++;
+                }
+            }
+            else
             {
                 zudang++;
             }
@@ -86,7 +101,14 @@ public class EvaluateTime
                 x1 += dirctx[i]; y1 += dircty[i];
                 num++;
             }
-            if (x1 + dirctx[i] >= 0 && x1 + dirctx[i] < 9 && y1 + dircty[i] >= 0 && y1 + dircty[i] < 9 && broad[x1 + dirctx[i], y1 + dircty[i]] == 1)
+            if (x1 + dirctx[i] >= 0 && x1 + dirctx[i] < 9 && y1 + dircty[i] >= 0 && y1 + dircty[i] < 9)
+            {
+                if (broad[x1 + dirctx[i], y1 + dircty[i]] == 1)
+                {
+                    zudang++;
+                }
+            }
+            else
             {
                 zudang++;
             }
@@ -96,7 +118,14 @@ public class EvaluateTime
                 x1 += dirctx[i + 4]; y1 += dircty[i + 4];
                 num++;
             }
-            if (x1 + dirctx[i + 4] >= 0 && x1 + dirctx[i + 4] < 9 && y1 + dircty[i + 4] >= 0 && y1 + dircty[i] < 9 && broad[x1 + dirctx[i + 4], y1 + dircty[i + 4]] == 1)
+            if (x1 + dirctx[i + 4] >= 0 && x1 + dirctx[i + 4] < 9 && y1 + dircty[i + 4] >= 0 && y1 + dircty[i] < 9)
+            {
+                if (broad[x1 + dirctx[i + 4], y1 + dircty[i + 4]] == 1)
+                {
+                    zudang++;
+                }
+            }
+            else
             {
                 zudang++;
             }
