@@ -58,67 +58,68 @@ class Trainer:
     def get_best_model_path(self):
         return self.best_model_path
 
-    def generate_self_play_games(self, model_state_dict, opponent_state_dict, num_games):
-        import torch
-        from model import GomokuNet
-        from mcts import MCTS
-        from board import GomokuBoard
-        import numpy as np
-        if torch.cuda.is_available():
-            device = torch.device("cuda")
-        else:
-            device = torch.device("cpu")
-        model = GomokuNet(device=device)
-        model.load_state_dict(model_state_dict)
-        mcts = MCTS(model)
-        opponent_model = GomokuNet(device=device)
-        opponent_model.load_state_dict(opponent_state_dict)
-        opponent_mcts = MCTS(opponent_model)
-        games = []
-        for game_idx in range(num_games):
-            board = GomokuBoard()
-            game_history = []
-            step = 0
-            # 轮流执黑白
-            if game_idx % 2 == 0:
-                black_mcts = mcts
-                white_mcts = opponent_mcts
-            else:
-                black_mcts = opponent_mcts
-                white_mcts = mcts
-            while not board.winner:
-                if board.current_player == 1:
-                    action = black_mcts.get_move(board, temperature=1.0)
-                else:
-                    action = white_mcts.get_move(board, temperature=1.0)
-                row, col = action // 9, action % 9
-                action_probs = (black_mcts if board.current_player == 1 else white_mcts).search(board)
-                game_history.append({
-                    'state': board.get_state(),
-                    'policy': action_probs,
-                    'player': board.current_player
-                })
-                board.make_move(row, col)
-                step += 1
-            for sample in game_history:
-                sample['value'] = 1 if board.winner == sample['player'] else -1
-            games.append(game_history)
-        return games
+    def generate_self_play_games_minimax(self, model_state_dict, num_games, mcts_first=True):
+        import os
+        import traceback
+        print(f"[自对弈进程] 进入generate_self_play_games_minimax, pid={os.getpid()}")
+        try:
+            from board import GomokuBoard
+            import numpy as np
+            print(f"[自对弈进程] 初始化MinimaxAI, pid={os.getpid()}")
+            minimax_black = MinimaxAI(depth=2)
+            minimax_white = MinimaxAI(depth=2)
+            games = []
+            print(f"[自对弈进程] 开始生成{num_games}局, pid={os.getpid()}")
+            for game_idx in range(num_games):
+                try:
+                    board = GomokuBoard()
+                    game_history = []
+                    step = 0
+                    max_steps = 81
+                    while not board.winner and step < max_steps:
+                        if board.current_player == 1:
+                            row, col = minimax_black.get_move(board.board)
+                        else:
+                            row, col = minimax_white.get_move(board.board)
+                        action = row * 9 + col
+                        # 生成one-hot policy
+                        policy = {action: 1.0}
+                        game_history.append({
+                            'state': board.get_state(),
+                            'policy': policy,
+                            'player': board.current_player
+                        })
+                        board.make_move(row, col)
+                        step += 1
+                    for sample in game_history:
+                        sample['value'] = 1 if board.winner == sample['player'] else -1
+                    games.append(game_history)
+                    print(f"[自对弈进程] 完成第{game_idx+1}局, 步数{step}, pid={os.getpid()}")
+                except Exception as e:
+                    print(f"[自对弈进程][单局异常] pid={os.getpid()}，game_idx={game_idx}，异常信息: {e}")
+                    traceback.print_exc()
+            print(f"[自对弈进程] 退出generate_self_play_games_minimax, pid={os.getpid()}, 返回{len(games)}局")
+            return games
+        except Exception as e:
+            print(f"[自对弈进程][函数异常] pid={os.getpid()}，异常信息: {e}")
+            traceback.print_exc()
+            return []
 
-    def self_play(self, num_games: int = 100) -> None:
-        print(f"\n开始生成{num_games}局自对弈数据...")
-        num_workers = 8  # 可根据显卡和CPU调整
+    def self_play_minimax(self, num_games: int = 100) -> None:
+        print(f"\n开始生成{num_games}局与MinimaxAI自对弈数据...")
+        num_workers = 4
         games_per_worker = num_games // num_workers
         remainder = num_games % num_workers
         tasks = [games_per_worker] * num_workers
         for i in range(remainder):
             tasks[i] += 1
         model_state_dict = {k: v.cpu() for k, v in self.model.state_dict().items()}
-        opponent_state_dict = {k: v.cpu() for k, v in self.opponent_model.state_dict().items()}
         all_games = []
+        from concurrent.futures import ProcessPoolExecutor, as_completed
+        from tqdm import tqdm
         with ProcessPoolExecutor(max_workers=num_workers) as executor:
-            futures = [executor.submit(self.generate_self_play_games, model_state_dict, opponent_state_dict, n) for n in tasks]
-            with tqdm(total=num_games, desc="自对弈进度") as pbar:
+            futures = [executor.submit(self.generate_self_play_games_minimax, model_state_dict, n, mcts_first=(i%2==0)) for i, n in enumerate(tasks)]
+            with tqdm(total=num_games, desc="Minimax自对弈进度") as pbar:
                 for future in as_completed(futures):
                     result = future.result()
                     all_games.extend(result)
@@ -216,100 +217,6 @@ class Trainer:
         print(f"策略损失: {avg_metrics['policy_loss']:.4f}")
         print(f"价值损失: {avg_metrics['value_loss']:.4f}")
         return avg_metrics
-
-    def generate_self_play_games_minimax(self, model_state_dict, num_games, mcts_first=True):
-        import os
-        import traceback
-        print(f"[自对弈进程] 进入generate_self_play_games_minimax, pid={os.getpid()}")
-        try:
-            from model import GomokuNet
-            from mcts import MCTS
-            from board import GomokuBoard
-            import torch
-            print(f"[自对弈进程] 初始化MinimaxAI, pid={os.getpid()}")
-            minimax_ai = MinimaxAI(depth=2)
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            print(f"[自对弈进程] 初始化模型, pid={os.getpid()}")
-            model = GomokuNet(device=device)
-            model.load_state_dict(model_state_dict)
-            mcts = MCTS(model)
-            games = []
-            print(f"[自对弈进程] 开始生成{num_games}局, pid={os.getpid()}")
-            for game_idx in range(num_games):
-                try:
-                    board = GomokuBoard()
-                    game_history = []
-                    step = 0
-                    max_steps = 81
-                    if mcts_first:
-                        black_is_mcts = True
-                    else:
-                        black_is_mcts = False
-                    while not board.winner and step < max_steps:
-                        print(f"[自对弈进程] game_idx={game_idx}, step={step}, 当前玩家={board.current_player}, pid={os.getpid()} - 准备调用get_move")
-                        if (board.current_player == 1 and black_is_mcts) or (board.current_player == -1 and not black_is_mcts):
-                            print(f"[自对弈进程] 调用MCTS.get_move, pid={os.getpid()}")
-                            action = mcts.get_move(board, temperature=1.0)
-                            print(f"[自对弈进程] MCTS.get_move返回, action={action}, pid={os.getpid()}")
-                            row, col = action // 9, action % 9
-                        else:
-                            print(f"[自对弈进程] 调用MinimaxAI.get_move, pid={os.getpid()}")
-                            row, col = minimax_ai.get_move(board.board)
-                            print(f"[自对弈进程] MinimaxAI.get_move返回, row={row}, col={col}, pid={os.getpid()}")
-                        print(f"[自对弈进程] 调用board.make_move, row={row}, col={col}, pid={os.getpid()}")
-                        board.make_move(row, col)
-                        print(f"[自对弈进程] board.make_move完成, pid={os.getpid()}")
-                        step += 1
-                        action_probs = mcts.search(board) if ((board.current_player == -1 and black_is_mcts) or (board.current_player == 1 and not black_is_mcts)) else None
-                        game_history.append({
-                            'state': board.get_state(),
-                            'policy': action_probs if action_probs is not None else {},
-                            'player': board.current_player
-                        })
-                    if step >= max_steps:
-                        print(f"[自对弈进程][警告] 死循环保护触发，game_idx={game_idx}, pid={os.getpid()}")
-                    for sample in game_history:
-                        sample['value'] = 1 if board.winner == sample['player'] else -1
-                    games.append(game_history)
-                    print(f"[自对弈进程] 完成第{game_idx+1}局, 步数{step}, pid={os.getpid()}")
-                except Exception as e:
-                    print(f"[自对弈进程][单局异常] pid={os.getpid()}，game_idx={game_idx}，异常信息: {e}")
-                    traceback.print_exc()
-            print(f"[自对弈进程] 退出generate_self_play_games_minimax, pid={os.getpid()}, 返回{len(games)}局")
-            return games
-        except Exception as e:
-            print(f"[自对弈进程][函数异常] pid={os.getpid()}，异常信息: {e}")
-            traceback.print_exc()
-            return []
-
-    def self_play_minimax(self, num_games: int = 100) -> None:
-        print(f"\n开始生成{num_games}局与MinimaxAI自对弈数据...")
-        num_workers = 4
-        games_per_worker = num_games // num_workers
-        remainder = num_games % num_workers
-        tasks = [games_per_worker] * num_workers
-        for i in range(remainder):
-            tasks[i] += 1
-        model_state_dict = {k: v.cpu() for k, v in self.model.state_dict().items()}
-        all_games = []
-        from concurrent.futures import ProcessPoolExecutor, as_completed
-        from tqdm import tqdm
-        with ProcessPoolExecutor(max_workers=num_workers) as executor:
-            futures = [executor.submit(self.generate_self_play_games_minimax, model_state_dict, n, mcts_first=(i%2==0)) for i, n in enumerate(tasks)]
-            with tqdm(total=num_games, desc="Minimax自对弈进度") as pbar:
-                for future in as_completed(futures):
-                    result = future.result()
-                    all_games.extend(result)
-                    pbar.update(len(result))
-        for game_idx, game_history in enumerate(all_games):
-            print(f"\n对局 {game_idx + 1}, 步数 {len(game_history)}:")
-            board = GomokuBoard()
-            for move in game_history:
-                board.board = np.array(move['state']['board'])
-                board.current_player = move['state']['current_player']
-            board.display()
-            for sample in game_history:
-                self.replay_buffer.append(sample)
 
     def load_model_player(self, model_path):
         # 加载历史模型作为对手

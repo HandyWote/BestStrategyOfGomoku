@@ -1,5 +1,11 @@
+package com.gomoku;
+
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,13 +23,41 @@ public class GomokuWinningAnalyzer {
             // 冲四 (一端开放的四连子)
             {{0, 1, 1, 1, 1, -1}},
             {{-1, 1, 1, 1, 1, 0}},
-            // 双活三（横向和纵向示例，实际需覆盖更多方向）
-            {{0, 1, 1, 1, 0}, {0, 1, 1, 1, 0}},
-            // 四三组合（简化模式，实际需匹配更多布局）
-            {{1, 1, 1, 0}, {0, 1, 1, 1}}
+            // 活三
+            {{0, 1, 1, 1, 0}},
+            // 跳活三
+            {{0, 1, 0, 1, 1, 0}},
+            {{0, 1, 1, 0, 1, 0}},
+            // 眠三
+            {{-1, 1, 1, 1, 0}},
+            {{0, 1, 1, 1, -1}}
     };
 
-    public GomokuWinningAnalyzer(String jsonBoard) {
+    // 三连威胁模式库
+    private static final int[][][] THREAT_PATTERNS = {
+            // 连续三连 (水平)
+            {{1, 1, 1, 0}},
+            {{0, 1, 1, 1}},
+            // 连续三连 (垂直)
+            {{1}, {1}, {1}, {0}},
+            {{0}, {1}, {1}, {1}},
+            // 连续三连 (对角线)
+            {{1,0,0}, {0,1,0}, {0,0,1}, {0,0,0}},
+            {{0,0,0}, {0,1,0}, {0,0,1}, {0,0,0}},
+            // 跳三 (水平)
+            {{1, 0, 1, 1, 0}},
+            {{0, 1, 0, 1, 1}},
+            {{1, 1, 0, 1, 0}},
+            // 跳三 (垂直)
+            {{1}, {0}, {1}, {1}, {0}},
+            {{0}, {1}, {0}, {1}, {1}},
+            {{1}, {1}, {0}, {1}, {0}},
+            // 跳三 (对角线)
+            {{1,0,0}, {0,0,0}, {0,0,1}, {0,0,1}, {0,0,0}},
+            {{0,0,0}, {0,1,0}, {0,0,0}, {0,0,1}, {0,0,1}}
+    };
+
+    public GomokuWinningAnalyzer(String jsonBoard) throws JSONException {
         JSONObject jsonObject = new JSONObject(jsonBoard);
         JSONArray jsonBoardArray = jsonObject.getJSONArray("board");
         this.boardSize = jsonBoardArray.length(); // 从JSON获取实际尺寸，确保为9
@@ -38,7 +72,7 @@ public class GomokuWinningAnalyzer {
     }
 
     // 核心方法：分析必胜局面
-    public JSONObject analyzeWinningSituations() {
+    public JSONObject analyzeWinningSituations() throws JSONException {
         JSONObject result = new JSONObject();
 
         // 分析黑棋必胜策略
@@ -53,7 +87,7 @@ public class GomokuWinningAnalyzer {
     }
 
     // 为指定玩家分析必胜策略
-    private JSONObject analyzeForPlayer(int player) {
+    private JSONObject analyzeForPlayer(int player) throws JSONException {
         JSONObject analysis = new JSONObject();
 
         // 1. 检查立即获胜机会
@@ -237,26 +271,229 @@ public class GomokuWinningAnalyzer {
 
     // 推荐最佳落子（适配9x9棋盘中心逻辑）
     private int[] recommendBestMove(int player) {
+        System.out.println("开始为玩家" + player + "推荐最佳落子...");
+
         // 1. 优先选择立即获胜的位置
         int[] immediateWin = findImmediateWin(player);
         if (immediateWin != null) {
+            System.out.println("找到立即获胜位置: (" + immediateWin[0] + "," + immediateWin[1] + ")");
             return immediateWin;
         }
 
         // 2. 其次选择能阻止对手获胜的位置
         int[] opponentWin = findImmediateWin(-player);
         if (opponentWin != null) {
+            System.out.println("找到阻止对手获胜位置: (" + opponentWin[0] + "," + opponentWin[1] + ")");
             return opponentWin;
         }
 
-        // 3. 选择能形成必胜模式的位置
+        // 3. 防守：优先堵对手的三连威胁
+        int[] blockThreat = findThreatBlockingMove(-player);
+        if (blockThreat != null) {
+            System.out.println("找到对手威胁，进行防守: (" + blockThreat[0] + "," + blockThreat[1] + ")");
+            return blockThreat;
+        }
+
+        // 4. 选择能形成必胜模式的位置
         List<int[]> winningPatterns = findWinningPatterns(player);
         if (!winningPatterns.isEmpty()) {
+            System.out.println("找到必胜模式位置: (" + winningPatterns.get(0)[0] + "," + winningPatterns.get(0)[1] + ")");
             return winningPatterns.get(0);
         }
 
-        // 4. 最后选择9x9棋盘的中心区域（4,4）
-        return findCenterMove();
+        // 5. 选择战略位置（优先中心区域）
+        int[] strategicMove = findStrategicMove(player);
+        if (strategicMove != null) {
+            System.out.println("找到战略位置: (" + strategicMove[0] + "," + strategicMove[1] + ")");
+            return strategicMove;
+        }
+
+        // 6. 最后选择9x9棋盘的中心区域（4,4）
+        int[] centerMove = findCenterMove();
+        System.out.println("使用中心区域落子: (" + centerMove[0] + "," + centerMove[1] + ")");
+        return centerMove;
+    }
+
+    // 增强威胁检测方法 - 基于模式匹配
+    private int[] findThreatBlockingMove(int opponent) {
+        // 1. 扫描棋盘寻找威胁模式
+        for (int i = 0; i < boardSize; i++) {
+            for (int j = 0; j < boardSize; j++) {
+                for (int[][] pattern : THREAT_PATTERNS) {
+                    if (matchesThreatPattern(i, j, opponent, pattern)) {
+                        // 找到威胁模式，返回防守点
+                        int[] blockPoint = findBlockingPoint(i, j, pattern);
+                        if (blockPoint != null) {
+                            return blockPoint;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. 扫描棋盘寻找三连威胁
+        for (int i = 0; i < boardSize; i++) {
+            for (int j = 0; j < boardSize; j++) {
+                if (board[i][j] == EMPTY) {
+                    // 模拟对手落子
+                    board[i][j] = opponent;
+
+                    // 检查是否形成三连威胁
+                    if (isThreeThreat(i, j, opponent)) {
+                        board[i][j] = EMPTY;
+                        return new int[]{i, j};
+                    }
+
+                    board[i][j] = EMPTY;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    // 检查是否匹配威胁模式
+    private boolean matchesThreatPattern(int row, int col, int opponent, int[][] pattern) {
+        int patternHeight = pattern.length;
+        int patternWidth = pattern[0].length;
+
+        // 检查边界
+        if (row < 0 || row + patternHeight > boardSize ||
+                col < 0 || col + patternWidth > boardSize) {
+            return false;
+        }
+
+        // 检查模式匹配
+        for (int i = 0; i < patternHeight; i++) {
+            for (int j = 0; j < patternWidth; j++) {
+                int r = row + i;
+                int c = col + j;
+                int cellValue = board[r][c];
+                int patternValue = pattern[i][j];
+
+                // 模式匹配规则：
+                // 0 = 忽略（可以是任意值）
+                // 1 = 对手棋子
+                // -1 = 我方棋子或边界
+                if (patternValue == 0) {
+                    continue;
+                } else if (patternValue == 1) {
+                    if (cellValue != opponent) {
+                        return false;
+                    }
+                } else if (patternValue == -1) {
+                    if (cellValue != -opponent && cellValue != EMPTY) {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    // 查找威胁模式的防守点
+    private int[] findBlockingPoint(int row, int col, int[][] pattern) {
+        int patternHeight = pattern.length;
+        int patternWidth = pattern[0].length;
+
+        // 查找模式中的空位（防守点）
+        for (int i = 0; i < patternHeight; i++) {
+            for (int j = 0; j < patternWidth; j++) {
+                if (pattern[i][j] == -1) {
+                    int r = row + i;
+                    int c = col + j;
+                    if (board[r][c] == EMPTY) {
+                        return new int[]{r, c};
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    // 检查是否形成三连威胁
+    private boolean isThreeThreat(int row, int col, int player) {
+        int[][] directions = {{1,0}, {0,1}, {1,1}, {1,-1}};
+
+        for (int[] dir : directions) {
+            int count = 1; // 包括当前落子
+
+            // 正方向计数
+            for (int k = 1; k <= 3; k++) {
+                int r = row + dir[0] * k;
+                int c = col + dir[1] * k;
+                if (r < 0 || r >= boardSize || c < 0 || c >= boardSize) break;
+                if (board[r][c] != player) break;
+                count++;
+            }
+
+            // 反方向计数
+            for (int k = 1; k <= 3; k++) {
+                int r = row - dir[0] * k;
+                int c = col - dir[1] * k;
+                if (r < 0 || r >= boardSize || c < 0 || c >= boardSize) break;
+                if (board[r][c] != player) break;
+                count++;
+            }
+
+            // 检查是否形成三连
+            if (count >= 3) {
+                // 检查是否有效威胁（至少一端开放）
+                int end1r = row + dir[0] * 4;
+                int end1c = col + dir[1] * 4;
+                int end2r = row - dir[0] * 4;
+                int end2c = col - dir[1] * 4;
+
+                if (isValidEmpty(end1r, end1c) || isValidEmpty(end2r, end2c)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    // 辅助方法：检查位置是否有效且为空
+    private boolean isValidEmpty(int r, int c) {
+        return (r >= 0 && r < boardSize && c >= 0 && c < boardSize && board[r][c] == EMPTY);
+    }
+
+    /**
+     * 寻找战略位置（在已有棋子附近）
+     */
+    private int[] findStrategicMove(int player) {
+        // 优先检查水平/垂直方向的相邻位置
+        int[][] directions = {{1,0}, {0,1}, {-1,0}, {0,-1}}; // 水平/垂直方向优先
+        for (int i = 0; i < boardSize; i++) {
+            for (int j = 0; j < boardSize; j++) {
+                if (board[i][j] == EMPTY) {
+                    // 优先检查水平/垂直方向
+                    for (int[] dir : directions) {
+                        int r = i + dir[0];
+                        int c = j + dir[1];
+                        if (r >= 0 && r < boardSize && c >= 0 && c < boardSize &&
+                                board[r][c] != EMPTY) {
+                            return new int[]{i, j};
+                        }
+                    }
+                    // 再检查斜线方向
+                    int[][] diagDirs = {{1,1}, {1,-1}, {-1,1}, {-1,-1}};
+                    for (int[] dir : diagDirs) {
+                        int r = i + dir[0];
+                        int c = j + dir[1];
+                        if (r >= 0 && r < boardSize && c >= 0 && c < boardSize &&
+                                board[r][c] != EMPTY) {
+                            return new int[]{i, j};
+                        }
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     // 寻找9x9棋盘的中心位置
@@ -287,7 +524,7 @@ public class GomokuWinningAnalyzer {
             }
         }
 
-        return new int[]{-1, -1}; // 无位置可下
+        return new int[]{0, 0}; // 确保返回有效位置
     }
 
     // ====== 数组输出方法（保持原有逻辑，适配9x9坐标范围） ======
@@ -334,7 +571,7 @@ public class GomokuWinningAnalyzer {
     }
 
     // 导出当前9x9棋盘为JSON
-    public String exportBoardToJson() {
+    public String exportBoardToJson() throws JSONException {
         JSONObject json = new JSONObject();
         JSONArray boardArray = new JSONArray();
 
@@ -347,10 +584,11 @@ public class GomokuWinningAnalyzer {
         }
 
         json.put("board", boardArray);
-        return json.toString(2); // 缩进2个空格
+        return json.toString(); // 缩进2个空格
     }
 
     public static void main(String[] args) {
+        System.setOut(new PrintStream(System.out, true, StandardCharsets.UTF_8));
         // 示例：9x9棋盘棋局（中心区域有棋子）
         String jsonBoard = "{\"board\":[" +
                 "[0,0,0,0,0,0,0,0,0]," +
@@ -367,7 +605,7 @@ public class GomokuWinningAnalyzer {
         try {
             GomokuWinningAnalyzer analyzer = new GomokuWinningAnalyzer(jsonBoard);
             JSONObject analysis = analyzer.analyzeWinningSituations();
-            System.out.println("9x9棋盘分析结果:\n" + analysis.toString(2));
+            System.out.println("9x9棋盘分析结果:\n" + analysis.toString());
             System.out.println("\n当前9x9棋盘:\n" + analyzer.exportBoardToJson());
 
             // 测试空位置处理

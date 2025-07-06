@@ -1,0 +1,17 @@
+C:\Users\sensei\source\repos\启发式\bin\Debug\net8.0\启发式.exe
+C:\Users\sensei\source\repos\启发式\bin\Debug\net8.0\启发式.deps.json
+C:\Users\sensei\source\repos\启发式\bin\Debug\net8.0\启发式.runtimeconfig.json
+C:\Users\sensei\source\repos\启发式\bin\Debug\net8.0\启发式.dll
+C:\Users\sensei\source\repos\启发式\bin\Debug\net8.0\启发式.pdb
+C:\Users\sensei\source\repos\启发式\obj\Debug\net8.0\启发式.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\sensei\source\repos\启发式\obj\Debug\net8.0\启发式.AssemblyInfoInputs.cache
+C:\Users\sensei\source\repos\启发式\obj\Debug\net8.0\启发式.AssemblyInfo.cs
+C:\Users\sensei\source\repos\启发式\obj\Debug\net8.0\启发式.csproj.CoreCompileInputs.cache
+C:\Users\sensei\source\repos\启发式\obj\Debug\net8.0\启发式.dll
+C:\Users\sensei\source\repos\启发式\obj\Debug\net8.0\refint\启发式.dll
+C:\Users\sensei\source\repos\启发式\obj\Debug\net8.0\启发式.pdb
+C:\Users\sensei\source\repos\启发式\obj\Debug\net8.0\启发式.genruntimeconfig.cache
+C:\Users\sensei\source\repos\启发式\obj\Debug\net8.0\ref\启发式.dll
+C:\Users\sensei\source\repos\启发式\bin\Debug\net8.0\Newtonsoft.Json.dll
+C:\Users\sensei\source\repos\启发式\obj\Debug\net8.0\启发式.csproj.AssemblyReference.cache
+C:\Users\sensei\source\repos\启发式\obj\Debug\net8.0\启发式.csproj.Up2Date

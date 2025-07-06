@@ -1,0 +1,12 @@
+C:\Users\sensei\source\repos\启发式\bin\Debug\net6.0\启发式.deps.json
+C:\Users\sensei\source\repos\启发式\bin\Debug\net6.0\启发式.dll
+C:\Users\sensei\source\repos\启发式\bin\Debug\net6.0\启发式.pdb
+C:\Users\sensei\source\repos\启发式\obj\Debug\net6.0\启发式.csproj.AssemblyReference.cache
+C:\Users\sensei\source\repos\启发式\obj\Debug\net6.0\启发式.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\sensei\source\repos\启发式\obj\Debug\net6.0\启发式.AssemblyInfoInputs.cache
+C:\Users\sensei\source\repos\启发式\obj\Debug\net6.0\启发式.AssemblyInfo.cs
+C:\Users\sensei\source\repos\启发式\obj\Debug\net6.0\启发式.csproj.CoreCompileInputs.cache
+C:\Users\sensei\source\repos\启发式\obj\Debug\net6.0\启发式.dll
+C:\Users\sensei\source\repos\启发式\obj\Debug\net6.0\refint\启发式.dll
+C:\Users\sensei\source\repos\启发式\obj\Debug\net6.0\启发式.pdb
+C:\Users\sensei\source\repos\启发式\obj\Debug\net6.0\ref\启发式.dll
