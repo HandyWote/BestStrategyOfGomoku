@@ -15,7 +15,7 @@ const GAME_CONFIG = {
 
     // 交互设置
     MESSAGE_TIMEOUT: 3000,    // 消息显示超时时间（毫秒）
-    REFRESH_INTERVAL: 1000,   // 棋盘刷新间隔时间（毫秒）
+    REFRESH_INTERVAL: 100,   // 棋盘刷新间隔时间（毫秒）
 
     // 尺寸比例
     BUTTON_SIZE_RATIO: 0.8,   // 交点按钮相对于单元格的尺寸比例
