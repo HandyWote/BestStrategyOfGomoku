@@ -43,6 +43,7 @@ def main():
         print(f"错误：{e}")
         return
 
+
     # 输出结果
     result = {
         "next_move": move,
