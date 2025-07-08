@@ -55,3 +55,4 @@ coverage/
 *~
 .promptx
 .idea
+config.json
