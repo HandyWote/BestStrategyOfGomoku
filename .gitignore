@@ -17,6 +17,8 @@ Thumbs.db
 *.sw?
 .promptx
 myenv
+.venv
+Gomoku
 
 # 日志文件
 *.log
