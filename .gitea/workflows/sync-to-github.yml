@@ -5,9 +5,6 @@ on: [push]
 jobs:
   sync-to-github:
     runs-on: ubuntu-latest
-    env:
-      http_proxy: "http://192.168.31.129:7890"
-      https_proxy: "http://192.168.31.129:7890"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -33,7 +30,7 @@ jobs:
           git remote add github "https://${{ secrets.GH_PAT }}@github.com/HandyWote/BestStrategyOfGomoku.git"
           git fetch github
 
-      - name: Push to GitHub
+      - name: 强制推送到 GitHub（覆盖远程分支）
         run: |
           git push github HEAD:${{ steps.branch.outputs.branch }} --force
           echo "Successfully pushed to GitHub"
