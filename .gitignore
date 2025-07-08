@@ -56,3 +56,4 @@ coverage/
 .promptx
 .idea
 config.json
+__pycache__/
