@@ -5,6 +5,9 @@ on: [push]
 jobs:
   sync-to-github:
     runs-on: ubuntu-latest
+    env:
+      http_proxy: "http://192.168.31.129:7890"
+      https_proxy: "http://192.168.31.129:7890"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
